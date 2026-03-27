@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     app_env: str = "development"
     app_host: str = "0.0.0.0"
     app_port: int = 8000
+    secret_key: str = "change-this-secret-key"
+    access_token_expire_minutes: int = 60
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
