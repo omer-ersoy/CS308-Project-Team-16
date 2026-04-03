@@ -1,13 +1,14 @@
-import { useState } from 'react'
-import './App.css'
+import ProductPage from "./pages/ProductPage";
+import { getProductById, products } from "./data/products";
 
 function App() {
+  const currentProduct = getProductById("bleu-de-chanel") ?? products[0];
 
-  return (
-    <>
-      <h1 className="text-3xl font-bold text-blue-600">Tailwind check</h1>
-    </>
-  );
+  if (!currentProduct) {
+    return <div className="p-8 text-slate-700">Product not found.</div>;
+  }
+
+  return <ProductPage product={currentProduct} />;
 }
 
 export default App;
