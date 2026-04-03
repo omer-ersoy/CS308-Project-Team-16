@@ -1,3 +1,4 @@
+import { AuthProvider } from "./context/AuthContext";
 import ProductPage from "./pages/ProductPage";
 import { getProductById, products } from "./data/products";
 
@@ -8,7 +9,11 @@ function App() {
     return <div className="p-8 text-slate-700">Product not found.</div>;
   }
 
-  return <ProductPage product={currentProduct} />;
+  return (
+    <AuthProvider>
+      <ProductPage product={currentProduct} />
+    </AuthProvider>
+  );
 }
 
 export default App;

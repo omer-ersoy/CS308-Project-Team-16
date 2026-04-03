@@ -1,4 +1,5 @@
 import { useState } from "react";
+import SiteHeader from "../components/SiteHeader";
 
 function ProductPage({ product }) {
   const [quantity, setQuantity] = useState(1);
@@ -10,20 +11,10 @@ function ProductPage({ product }) {
 
   return (
     <div className="min-h-screen bg-[#f4f7f8] text-slate-700">
-      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[64%_36%]">
-        <section className="relative px-6 pb-8 pt-5 sm:px-10 lg:px-14">
-          <header className="grid grid-cols-3 items-center text-[11px] tracking-[0.28em] text-slate-500 uppercase">
-            <nav className="flex items-center gap-5">
-              <button className="cursor-pointer hover:text-slate-800">Shop</button>
-              <button className="cursor-pointer hover:text-slate-800">Collections</button>
-              <button className="cursor-pointer hover:text-slate-800">About</button>
-            </nav>
-            <div className="justify-self-center text-sm font-semibold tracking-[0.2em] text-slate-700">
-              Fragrance shop
-            </div>
-            <div />
-          </header>
+      <SiteHeader />
 
+      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[64%_36%]">
+        <section className="relative px-6 pb-8 pt-0 sm:px-10 lg:px-14">
           <div className="mt-10 grid grid-cols-[56px_1fr] gap-8 sm:grid-cols-[70px_1fr] lg:mt-14">
             <div className="flex flex-col gap-3">
               {product.thumbnails.map((thumbnail, index) => (
@@ -51,13 +42,7 @@ function ProductPage({ product }) {
           </div>
         </section>
 
-        <aside className="border-l border-slate-200 bg-white px-6 pb-10 pt-5 sm:px-10">
-          <header className="flex justify-end text-[11px] tracking-[0.28em] text-slate-500 uppercase">
-            <button className="cursor-pointer hover:text-slate-800">Search</button>
-            <button className="ml-6 cursor-pointer hover:text-slate-800">Account</button>
-            <button className="ml-6 cursor-pointer hover:text-slate-800">Cart (0)</button>
-          </header>
-
+        <aside className="border-l border-slate-200 bg-white px-6 pb-10 pt-0 sm:px-10">
           <div className="mx-auto mt-10 max-w-md">
             <h1 className="text-4xl font-light tracking-tight text-slate-700">{product.name}</h1>
             <p className="mt-3 text-sm tracking-widest text-slate-500 uppercase">
