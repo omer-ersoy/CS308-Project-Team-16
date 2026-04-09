@@ -10,6 +10,21 @@ cp .env.example .env
 uvicorn app.main:app --reload
 ```
 
+## Auth Testing
+
+- `POST /api/auth/register`: create a new user with a hashed password
+- `POST /api/auth/login`: receive a bearer token
+- `GET /api/users/me`: send `Authorization: Bearer <token>` to test a protected route
+
+Demo login after startup:
+
+```json
+{
+  "email": "customer@example.com",
+  "password": "password123"
+}
+```
+
 ## Structure
 
 - `app/api`: FastAPI route modules

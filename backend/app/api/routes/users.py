@@ -1,7 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.api.deps import get_current_user
 from app.data.store import USERS
-from app.schemas.user import UserCreate, UserRead
+from app.schemas.user import UserRead
 
 
 router = APIRouter()
