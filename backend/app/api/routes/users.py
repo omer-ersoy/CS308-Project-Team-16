@@ -13,8 +13,6 @@ def list_users() -> list[UserRead]:
     return USERS
 
 
-@router.post("", response_model=UserRead, status_code=201)
-def create_user(payload: UserCreate) -> UserRead:
-    user = UserRead(id=len(USERS) + 1, full_name=payload.full_name, email=payload.email, role=payload.role)
-    USERS.append(user)
-    return user
+@router.get("/me", response_model=UserRead)
+def read_current_user(current_user: UserRead = Depends(get_current_user)) -> UserRead:
+    return current_user
