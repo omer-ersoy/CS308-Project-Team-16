@@ -8,6 +8,7 @@ export const products = [
     volume: "100 ml / 3.38 fl. oz.",
     price: 210,
     currency: "USD",
+    stock: 8,
     shortDescription:
       "Bleu de Chanel is a woody, spicy fragrance that is perfect for men who want to make a statement.",
     features: ["Woody", "Spicy", "Long-lasting", "Versatile"],
