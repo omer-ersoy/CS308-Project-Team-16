@@ -7,7 +7,9 @@ function ProductPage({ product }) {
   const [detailsOpen, setDetailsOpen] = useState(true);
 
   const decreaseQuantity = () => setQuantity((current) => Math.max(1, current - 1));
-  const increaseQuantity = () => setQuantity((current) => current + 1);
+  const stockCount = product.stock ?? 0;
+  const increaseQuantity = () =>
+    setQuantity((current) => Math.min(stockCount || 1, current + 1));
 
   return (
     <div className="min-h-screen bg-[#f4f7f8] text-slate-700">
@@ -64,14 +66,30 @@ function ProductPage({ product }) {
                   -
                 </button>
                 <span>{quantity}</span>
-                <button className="text-slate-500 hover:text-slate-700" onClick={increaseQuantity}>
+                <button
+                  className="text-slate-500 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={increaseQuantity}
+                  disabled={stockCount === 0 || quantity >= stockCount}
+                >
                   +
                 </button>
               </div>
             </div>
+            
+            {stockCount === 0 ? (
+              <p className="mt-4 text-sm font-medium text-red-500">Out of Stock</p>
+            ) : (
+              <p className="mt-4 text-sm text-green-600">In Stock: {stockCount}</p>
+            )}
 
-            <button className="mt-4 w-full bg-slate-700 px-4 py-3 text-xs tracking-[0.25em] text-white uppercase transition hover:bg-slate-800">
-              Add to Cart - {product.price * quantity} {product.currency}
+
+            <button
+              className="mt-4 w-full bg-slate-700 px-4 py-3 text-xs tracking-[0.25em] text-white uppercase disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={stockCount === 0}
+            >
+              {stockCount === 0
+                ? "Out of Stock"
+                : `Add to Cart - ${product.price * quantity} ${product.currency}`}
             </button>
 
             <button className="mt-4 w-full text-center text-xs tracking-[0.22em] text-slate-500 uppercase underline underline-offset-4 hover:text-slate-700">
