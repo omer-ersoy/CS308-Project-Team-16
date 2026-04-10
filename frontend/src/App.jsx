@@ -8,6 +8,11 @@ import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
 import CollectionsPage from "./pages/CollectionsPage";
 import { getProductById, products } from "./data/products";
+import {
+  filterProducts,
+  getSearchStatus,
+  shouldShowNoResultsState,
+} from "./utils/filterProducts";
 
 function ProductRoute({ searchProps }) {
   const { productId } = useParams();
@@ -43,30 +48,10 @@ function App() {
   const [searchValue, setSearchValue] = useState("");
   const normalizedSearch = searchValue.trim().toLowerCase();
   const filteredProducts = useMemo(() => {
-    if (!normalizedSearch) {
-      return products;
-    }
-
-    return products.filter((product) => {
-      const searchableContent = [
-        product.name,
-        product.volume,
-        product.shortDescription,
-        product.details,
-        ...product.features,
-      ];
-
-      return searchableContent.some((field) =>
-        field.toLowerCase().includes(normalizedSearch),
-      );
-    });
+    return filterProducts(products, normalizedSearch);
   }, [normalizedSearch]);
 
-  const searchStatus = normalizedSearch
-    ? filteredProducts.length > 0
-      ? "success"
-      : "empty"
-    : "idle";
+  const searchStatus = getSearchStatus(searchValue, filteredProducts.length);
 
   const searchProps = {
     searchValue,
@@ -76,7 +61,7 @@ function App() {
     searchStatus,
   };
 
-  const showSearchEmpty = Boolean(normalizedSearch) && filteredProducts.length === 0;
+  const showSearchEmpty = shouldShowNoResultsState(searchValue, filteredProducts.length);
 
   return (
     <AuthProvider>
