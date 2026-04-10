@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SiteHeader from "../components/SiteHeader";
 
-function ProductPage({ product }) {
+function ProductPage({ product, searchProps }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(product.mainImage ?? product.thumbnails?.[0]);
   const [detailsOpen, setDetailsOpen] = useState(true);
+
+  useEffect(() => {
+    setQuantity(1);
+    setSelectedImage(product.mainImage ?? product.thumbnails?.[0]);
+    setDetailsOpen(true);
+  }, [product]);
 
   const decreaseQuantity = () => setQuantity((current) => Math.max(1, current - 1));
   const stockCount = product.stock ?? 0;
@@ -13,7 +19,7 @@ function ProductPage({ product }) {
 
   return (
     <div className="min-h-screen bg-[#f4f7f8] text-slate-700">
-      <SiteHeader />
+      <SiteHeader {...searchProps} />
 
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[64%_36%]">
         <section className="relative px-6 pb-8 pt-0 sm:px-10 lg:px-14">
@@ -75,13 +81,12 @@ function ProductPage({ product }) {
                 </button>
               </div>
             </div>
-            
+
             {stockCount === 0 ? (
               <p className="mt-4 text-sm font-medium text-red-500">Out of Stock</p>
             ) : (
               <p className="mt-4 text-sm text-green-600">In Stock: {stockCount}</p>
             )}
-
 
             <button
               className="mt-4 w-full bg-slate-700 px-4 py-3 text-xs tracking-[0.25em] text-white uppercase disabled:cursor-not-allowed disabled:opacity-50"
