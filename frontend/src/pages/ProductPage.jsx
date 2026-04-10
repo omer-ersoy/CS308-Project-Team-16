@@ -1,5 +1,5 @@
 import { useState } from "react";
-import SiteHeader from "../components/SiteHeader";
+import Navbar from "../components/Navbar";
 
 function ProductPage({ product }) {
   const [quantity, setQuantity] = useState(1);
@@ -13,7 +13,7 @@ function ProductPage({ product }) {
 
   return (
     <div className="min-h-screen bg-[#f4f7f8] text-slate-700">
-      <SiteHeader />
+      <Navbar />
 
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[64%_36%]">
         <section className="relative px-6 pb-8 pt-0 sm:px-10 lg:px-14">

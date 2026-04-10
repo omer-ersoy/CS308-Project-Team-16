@@ -1,16 +1,16 @@
 import { useAuth } from "../context/AuthContext";
 
-function SiteHeader({ brandName = "Fragrance shop", cartCount = 0 }) {
+function Navbar({ brandName = "Fragrance shop", cartCount = 0 }) {
   const { openAuth, isLoggedIn } = useAuth();
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[64%_36%]">
       <header className="bg-[#f4f7f8] px-6 pt-5 sm:px-10 lg:px-14">
-        <div className="grid grid-cols-3 items-center text-[11px] tracking-[0.28em] text-slate-500 uppercase">
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-[11px] tracking-[0.28em] text-slate-500 uppercase">
+          <div className="text-sm font-semibold tracking-[0.2em] text-slate-700">
+            {brandName}
+          </div>
           <nav className="flex items-center gap-5">
-            <button type="button" className="cursor-pointer hover:text-slate-800">
-              Shop
-            </button>
             <button type="button" className="cursor-pointer hover:text-slate-800">
               Collections
             </button>
@@ -18,8 +18,6 @@ function SiteHeader({ brandName = "Fragrance shop", cartCount = 0 }) {
               About
             </button>
           </nav>
-          <div className="justify-self-center text-sm font-semibold tracking-[0.2em] text-slate-700">{brandName}</div>
-          <div />
         </div>
       </header>
 
@@ -44,4 +42,4 @@ function SiteHeader({ brandName = "Fragrance shop", cartCount = 0 }) {
   );
 }
 
-export default SiteHeader;
+export default Navbar;
