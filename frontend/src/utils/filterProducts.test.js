@@ -49,6 +49,27 @@ test("search remains case-insensitive for product names", () => {
   assert.equal(results[0].id, "sauvage");
 });
 
+test("SCRUM-80 keeps short-description search case-insensitive", () => {
+  const results = filterProducts(sampleProducts, "BeRgAmOt");
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].id, "sauvage");
+});
+
+test("SCRUM-80 keeps detailed-description search case-insensitive", () => {
+  const results = filterProducts(sampleProducts, "LoNg-LaStInG");
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].id, "bleu-de-chanel");
+});
+
+test("SCRUM-80 keeps feature search case-insensitive", () => {
+  const results = filterProducts(sampleProducts, "cItRuS");
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].id, "sauvage");
+});
+
 test("blank search returns all products", () => {
   const results = filterProducts(sampleProducts, "   ");
 
