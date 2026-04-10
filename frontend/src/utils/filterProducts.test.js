@@ -28,6 +28,20 @@ test("SCRUM-78 filters products by product name", () => {
   assert.equal(results[0].id, "bleu-de-chanel");
 });
 
+test("SCRUM-79 filters products by short description", () => {
+  const results = filterProducts(sampleProducts, "bergamot");
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].id, "sauvage");
+});
+
+test("SCRUM-79 filters products by detailed description", () => {
+  const results = filterProducts(sampleProducts, "long-lasting");
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].id, "bleu-de-chanel");
+});
+
 test("search remains case-insensitive for product names", () => {
   const results = filterProducts(sampleProducts, "sAuVaGe");
 
