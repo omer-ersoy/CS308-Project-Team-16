@@ -85,7 +85,12 @@ function App() {
           <SearchEmptyLayout searchProps={searchProps} searchValue={searchValue} />
         ) : (
           <Routes>
-            <Route path="/" element={<HomePage searchProps={searchProps} />} />
+            <Route
+              path="/"
+              element={
+                <HomePage searchProps={searchProps} products={filteredProducts} />
+              }
+            />
             <Route path="/about" element={<AboutPage searchProps={searchProps} />} />
             <Route path="/collections" element={<CollectionsPage searchProps={searchProps} />} />
             <Route path="/product/:productId" element={<ProductRoute searchProps={searchProps} />} />
