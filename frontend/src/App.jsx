@@ -8,7 +8,11 @@ import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
 import CollectionsPage from "./pages/CollectionsPage";
 import { getProductById, products } from "./data/products";
-import { filterProducts } from "./utils/filterProducts";
+import {
+  filterProducts,
+  getSearchStatus,
+  shouldShowNoResultsState,
+} from "./utils/filterProducts";
 
 function ProductRoute({ searchProps }) {
   const { productId } = useParams();
@@ -47,11 +51,7 @@ function App() {
     return filterProducts(products, normalizedSearch);
   }, [normalizedSearch]);
 
-  const searchStatus = normalizedSearch
-    ? filteredProducts.length > 0
-      ? "success"
-      : "empty"
-    : "idle";
+  const searchStatus = getSearchStatus(searchValue, filteredProducts.length);
 
   const searchProps = {
     searchValue,
@@ -61,7 +61,7 @@ function App() {
     searchStatus,
   };
 
-  const showSearchEmpty = Boolean(normalizedSearch) && filteredProducts.length === 0;
+  const showSearchEmpty = shouldShowNoResultsState(searchValue, filteredProducts.length);
 
   return (
     <AuthProvider>
