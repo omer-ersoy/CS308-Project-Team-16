@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PageShell from "../components/PageShell";
 
-function ProductPage({ product }) {
+function ProductPage({ product, searchProps }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(product.mainImage ?? product.thumbnails?.[0]);
   const [detailsOpen, setDetailsOpen] = useState(true);
+
+  useEffect(() => {
+    setQuantity(1);
+    setSelectedImage(product.mainImage ?? product.thumbnails?.[0]);
+    setDetailsOpen(true);
+  }, [product]);
 
   const decreaseQuantity = () => setQuantity((current) => Math.max(1, current - 1));
   const stockCount = product.stock ?? 0;
@@ -12,7 +18,7 @@ function ProductPage({ product }) {
     setQuantity((current) => Math.min(stockCount || 1, current + 1));
 
   return (
-    <PageShell>
+    <PageShell searchProps={searchProps}>
       <div className="grid flex-1 grid-cols-1 lg:grid-cols-[64%_36%]">
         <section className="relative px-6 pb-8 pt-0 sm:px-10 lg:px-14">
           <div className="mt-10 grid grid-cols-[56px_1fr] gap-8 sm:grid-cols-[70px_1fr] lg:mt-14">
@@ -73,13 +79,12 @@ function ProductPage({ product }) {
                 </button>
               </div>
             </div>
-            
+
             {stockCount === 0 ? (
               <p className="mt-4 text-sm font-medium text-red-500">Out of Stock</p>
             ) : (
               <p className="mt-4 text-sm text-green-600">In Stock: {stockCount}</p>
             )}
-
 
             <button
               className="mt-4 w-full bg-slate-700 px-4 py-3 text-xs tracking-[0.25em] text-white uppercase disabled:cursor-not-allowed disabled:opacity-50"

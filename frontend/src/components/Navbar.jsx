@@ -1,7 +1,18 @@
 import { useNavigate } from "react-router-dom";
+import SearchBar from "./SearchBar";
 import { useAuth } from "../context/AuthContext";
 
-function Navbar({ brandName = "Fragrance shop", cartCount = 0 }) {
+const noop = () => {};
+
+function Navbar({
+  brandName = "Fragrance shop",
+  cartCount = 0,
+  searchValue = "",
+  onSearchChange = noop,
+  onClearSearch = noop,
+  searchResultCount = 0,
+  searchStatus = "idle",
+}) {
   const navigate = useNavigate();
   const { openAuth, isLoggedIn } = useAuth();
 
@@ -35,21 +46,28 @@ function Navbar({ brandName = "Fragrance shop", cartCount = 0 }) {
         </div>
       </header>
 
-      <header className="border-l border-slate-200 bg-white px-6 pt-5 sm:px-10">
-        <div className="flex justify-end text-[11px] tracking-[0.28em] text-slate-500 uppercase">
-          <button type="button" className="cursor-pointer hover:text-slate-800">
-            Search
-          </button>
-          <button
-            type="button"
-            className="ml-6 cursor-pointer hover:text-slate-800"
-            onClick={() => openAuth("login")}
-          >
-            {isLoggedIn ? "My account" : "Account"}
-          </button>
-          <button type="button" className="ml-6 cursor-pointer hover:text-slate-800">
-            Cart ({cartCount})
-          </button>
+      <header className="border-l border-slate-200 bg-white px-6 py-5 sm:px-10">
+        <div className="flex flex-col gap-5 lg:items-end">
+          <SearchBar
+            value={searchValue}
+            onChange={onSearchChange}
+            onClear={onClearSearch}
+            resultCount={searchResultCount}
+            status={searchStatus}
+          />
+
+          <div className="flex flex-wrap justify-end gap-x-6 gap-y-2 text-[11px] tracking-[0.28em] text-slate-500 uppercase">
+            <button
+              type="button"
+              className="cursor-pointer hover:text-slate-800"
+              onClick={() => openAuth("login")}
+            >
+              {isLoggedIn ? "My account" : "Account"}
+            </button>
+            <button type="button" className="cursor-pointer hover:text-slate-800">
+              Cart ({cartCount})
+            </button>
+          </div>
         </div>
       </header>
     </div>
