@@ -1,6 +1,5 @@
 import { useState } from "react";
-import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
+import PageShell from "../components/PageShell";
 
 function ProductPage({ product }) {
   const [quantity, setQuantity] = useState(1);
@@ -13,9 +12,7 @@ function ProductPage({ product }) {
     setQuantity((current) => Math.min(stockCount || 1, current + 1));
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f4f7f8] text-slate-700">
-      <Navbar />
-
+    <PageShell>
       <div className="grid flex-1 grid-cols-1 lg:grid-cols-[64%_36%]">
         <section className="relative px-6 pb-8 pt-0 sm:px-10 lg:px-14">
           <div className="mt-10 grid grid-cols-[56px_1fr] gap-8 sm:grid-cols-[70px_1fr] lg:mt-14">
@@ -122,9 +119,7 @@ function ProductPage({ product }) {
           </div>
         </aside>
       </div>
-
-      <Footer />
-    </div>
+    </PageShell>
   );
 }
 

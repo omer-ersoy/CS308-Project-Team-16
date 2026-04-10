@@ -1,13 +1,10 @@
-import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
+import PageShell from "../components/PageShell";
 
 function CollectionsPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-[#f4f7f8] text-slate-700">
-      <Navbar />
-      <main className="flex-1">Collections</main>
-      <Footer />
-    </div>
+    <PageShell>
+      <main className="flex-1 px-6 py-10 sm:px-10 lg:px-14">Collections</main>
+    </PageShell>
   );
 }
 
