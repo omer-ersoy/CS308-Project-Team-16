@@ -2,8 +2,9 @@ import ProductCard from "../components/ProductCard";
 import PageShell from "../components/PageShell";
 import HeroSection from "../components/HeroSection";
 import CategorySection from "../components/CategorySection";
+import SortControls from "../components/SortControls";
 
-function HomePage({ searchProps, products = [] }) {
+function HomePage({ searchProps, sortOption = "default", onSortChange, products = [] }) {
   const hasProducts = products.length > 0;
   const isSearching = searchProps?.searchStatus !== "idle";
 
@@ -14,13 +15,20 @@ function HomePage({ searchProps, products = [] }) {
       <main className="flex flex-1 flex-col px-6 py-10 sm:px-10 lg:px-14">
         <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col">
           {!isSearching && (
-            <div className="mb-6">
-              <p className="text-[11px] tracking-[0.28em] text-slate-500 uppercase">
-                Featured products
-              </p>
-              <h2 className="mt-2 text-2xl font-light tracking-tight text-slate-700">
-                Our Selection
-              </h2>
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[11px] tracking-[0.28em] text-slate-500 uppercase">
+                  Featured products
+                </p>
+                <h2 className="mt-2 text-2xl font-light tracking-tight text-slate-700">
+                  Our Selection
+                </h2>
+              </div>
+
+              <SortControls
+                sortOption={sortOption}
+                onSortChange={onSortChange}
+              />
             </div>
           )}
           <section className="flex min-h-[40vh] flex-1 flex-col" aria-label="Products">
