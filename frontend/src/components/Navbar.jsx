@@ -12,6 +12,7 @@ function Navbar({
   onClearSearch = noop,
   searchResultCount = 0,
   searchStatus = "idle",
+  onCartClick = noop,
 }) {
   const navigate = useNavigate();
   const { openAuth, isLoggedIn } = useAuth();
@@ -64,7 +65,11 @@ function Navbar({
             >
               {isLoggedIn ? "My account" : "Account"}
             </button>
-            <button type="button" className="cursor-pointer hover:text-slate-800">
+            <button
+              type="button"
+              className="cursor-pointer hover:text-slate-800"
+              onClick={onCartClick}
+            >
               Cart ({cartCount})
             </button>
           </div>
