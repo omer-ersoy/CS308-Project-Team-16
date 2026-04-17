@@ -1,15 +1,21 @@
-import React from "react";
+import { Link } from "react-router-dom";
 
 function ProductCard({ product }) {
   const stockCount = product.stock ?? 0;
   const isOutOfStock = stockCount === 0;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
+    <Link
+      to={`/product/${product.id}`}
+      className="block overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md"
+    >
       <div className="relative bg-slate-100">
         <img
           src={product.mainImage}
           alt={product.name}
+          onError={(event) => {
+            event.currentTarget.src = product.fallbackImage;
+          }}
           className="h-64 w-full object-cover"
         />
 
@@ -37,7 +43,7 @@ function ProductCard({ product }) {
           <p className="text-sm text-green-600">In Stock: {stockCount}</p>
         )}
       </div>
-    </div>
+    </Link>
   );
 }
 

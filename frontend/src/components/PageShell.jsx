@@ -1,10 +1,10 @@
 import Footer from "./Footer";
 import Navbar from "./Navbar";
 
-function PageShell({ children, searchProps }) {
+function PageShell({ children, searchProps, cartCount = 0, onCartClick }) {
   return (
     <div className="flex min-h-screen flex-col bg-[#f4f7f8] text-slate-700">
-      <Navbar {...(searchProps ?? {})} />
+      <Navbar {...(searchProps ?? {})} cartCount={cartCount} onCartClick={onCartClick} />
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       <Footer />
     </div>
