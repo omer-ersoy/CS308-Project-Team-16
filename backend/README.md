@@ -6,9 +6,40 @@
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+docker compose up -d
 cp .env.example .env
+alembic upgrade head
 uvicorn app.main:app --reload
 ```
+
+The backend now expects PostgreSQL. Default local connection in `.env.example`:
+
+```env
+DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/cs308_store
+```
+
+Start only the database service from the `backend` directory with:
+
+```bash
+docker compose up -d
+```
+
+Stop it with:
+
+```bash
+docker compose down
+```
+
+Apply database migrations from the `backend` directory with:
+
+```bash
+alembic upgrade head
+```
+
+Seeded local accounts after startup:
+
+- Admin: `admin@example.com` / `admin12345`
+- Customer: `customer@example.com` / `password123`
 
 ## Auth Testing
 
@@ -29,5 +60,5 @@ Demo login after startup:
 
 - `app/api`: FastAPI route modules
 - `app/core`: settings and shared config
+- `app/db`: SQLAlchemy models, session setup, and seed data
 - `app/schemas`: Pydantic schemas
-- `app/data`: in-memory placeholder data for early API development
