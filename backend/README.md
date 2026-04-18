@@ -9,7 +9,8 @@ pip install -r requirements.txt
 docker compose up -d
 cp .env.example .env
 alembic upgrade head
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --reload-dir app --reload-exclude ".venv/*"
+
 ```
 
 The backend now expects PostgreSQL. Default local connection in `.env.example`:
@@ -35,6 +36,8 @@ Apply database migrations from the `backend` directory with:
 ```bash
 alembic upgrade head
 ```
+
+Because the local virtual environment lives inside `backend/.venv`, use `--reload-dir app` during development so Uvicorn watches only application code and does not loop on `site-packages` changes.
 
 Seeded local accounts after startup:
 
