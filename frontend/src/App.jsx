@@ -1,12 +1,13 @@
-import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import CartDrawer from "./components/CartDrawer";
 import PageShell from "./components/PageShell";
 import ProductPage from "./pages/ProductPage";
 import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
 import CollectionsPage from "./pages/CollectionsPage";
+import AdminPage from "./pages/AdminPage";
 import { api } from "./lib/api";
 import { adaptProduct } from "./lib/productAdapter";
 
@@ -90,8 +91,27 @@ function SearchEmptyLayout({ searchProps, searchValue, cartCount, onCartClick })
   );
 }
 
-function App() {
+function AdminRoute({ searchProps, cartCount, onCartClick, onCatalogChange }) {
+  const { isLoggedIn, isAdmin } = useAuth();
+
+  if (!isLoggedIn || !isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  return (
+    <AdminPage
+      searchProps={searchProps}
+      cartCount={cartCount}
+      onCartClick={onCartClick}
+      onCatalogChange={onCatalogChange}
+    />
+  );
+}
+
+function AppContent() {
+  const location = useLocation();
   const [products, setProducts] = useState([]);
+  const [catalogReloadKey, setCatalogReloadKey] = useState(0);
   const [catalogStatus, setCatalogStatus] = useState("loading");
   const [catalogError, setCatalogError] = useState("");
   const [cart, setCart] = useState(null);
@@ -140,7 +160,7 @@ function App() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [catalogReloadKey]);
 
   const normalizedSearch = searchValue.trim().toLowerCase();
   const filteredProducts = useMemo(() => {
@@ -179,13 +199,22 @@ function App() {
 
   const isCatalogLoading = catalogStatus === "loading";
   const cartCount = getCartItemCount(cart);
+  const isAdminRoute = location.pathname.startsWith("/admin");
   const showSearchEmpty =
-    !isCatalogLoading && !catalogError && Boolean(normalizedSearch) && filteredProducts.length === 0;
+    !isAdminRoute &&
+    !isCatalogLoading &&
+    !catalogError &&
+    Boolean(normalizedSearch) &&
+    filteredProducts.length === 0;
 
   const handleAddToCart = useCallback(async (product, quantity) => {
     const updatedCart = await api.addCartItem(CART_ID, product.apiId, quantity);
     setCart(updatedCart);
     return updatedCart;
+  }, []);
+
+  const handleCatalogChange = useCallback(() => {
+    setCatalogReloadKey((current) => current + 1);
   }, []);
 
   const handleRemoveCartItem = useCallback(async (itemId) => {
@@ -201,74 +230,93 @@ function App() {
   }, []);
 
   return (
+    <>
+      {showSearchEmpty ? (
+        <SearchEmptyLayout
+          searchProps={searchProps}
+          searchValue={searchValue}
+          cartCount={cartCount}
+          onCartClick={() => setCartOpen(true)}
+        />
+      ) : (
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <HomePage
+                searchProps={searchProps}
+                products={filteredProducts}
+                isLoading={isCatalogLoading}
+                error={catalogError}
+                cartCount={cartCount}
+                onCartClick={() => setCartOpen(true)}
+              />
+            }
+          />
+          <Route
+            path="/about"
+            element={
+              <AboutPage
+                searchProps={searchProps}
+                cartCount={cartCount}
+                onCartClick={() => setCartOpen(true)}
+              />
+            }
+          />
+          <Route
+            path="/collections"
+            element={
+              <CollectionsPage
+                searchProps={searchProps}
+                cartCount={cartCount}
+                onCartClick={() => setCartOpen(true)}
+              />
+            }
+          />
+          <Route
+            path="/product/:productId"
+            element={
+              <ProductRoute
+                searchProps={searchProps}
+                products={products}
+                isLoading={isCatalogLoading}
+                cartCount={cartCount}
+                onCartClick={() => setCartOpen(true)}
+                onAddToCart={handleAddToCart}
+              />
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute
+                searchProps={searchProps}
+                cartCount={cartCount}
+                onCartClick={() => setCartOpen(true)}
+                onCatalogChange={handleCatalogChange}
+              />
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      )}
+      <CartDrawer
+        open={cartOpen}
+        cart={cart}
+        products={products}
+        removingItemId={removingItemId}
+        onClose={() => setCartOpen(false)}
+        onRemoveItem={handleRemoveCartItem}
+      />
+    </>
+  );
+}
+
+function App() {
+  return (
     <AuthProvider>
       <BrowserRouter>
-        {showSearchEmpty ? (
-          <SearchEmptyLayout
-            searchProps={searchProps}
-            searchValue={searchValue}
-            cartCount={cartCount}
-            onCartClick={() => setCartOpen(true)}
-          />
-        ) : (
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <HomePage
-                  searchProps={searchProps}
-                  products={filteredProducts}
-                  isLoading={isCatalogLoading}
-                  error={catalogError}
-                  cartCount={cartCount}
-                  onCartClick={() => setCartOpen(true)}
-                />
-              }
-            />
-            <Route
-              path="/about"
-              element={
-                <AboutPage
-                  searchProps={searchProps}
-                  cartCount={cartCount}
-                  onCartClick={() => setCartOpen(true)}
-                />
-              }
-            />
-            <Route
-              path="/collections"
-              element={
-                <CollectionsPage
-                  searchProps={searchProps}
-                  cartCount={cartCount}
-                  onCartClick={() => setCartOpen(true)}
-                />
-              }
-            />
-            <Route
-              path="/product/:productId"
-              element={
-                <ProductRoute
-                  searchProps={searchProps}
-                  products={products}
-                  isLoading={isCatalogLoading}
-                  cartCount={cartCount}
-                  onCartClick={() => setCartOpen(true)}
-                  onAddToCart={handleAddToCart}
-                />
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        )}
-        <CartDrawer
-          open={cartOpen}
-          cart={cart}
-          products={products}
-          removingItemId={removingItemId}
-          onClose={() => setCartOpen(false)}
-          onRemoveItem={handleRemoveCartItem}
-        />
+        <AppContent />
       </BrowserRouter>
     </AuthProvider>
   );
