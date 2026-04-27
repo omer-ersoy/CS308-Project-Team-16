@@ -1,7 +1,16 @@
 import { useEffect, useState } from "react";
 import PageShell from "../components/PageShell";
 
-function ProductPage({ product, searchProps, cartCount = 0, onCartClick, onAddToCart }) {
+function ProductPage({
+  product,
+  searchProps,
+  cartCount = 0,
+  wishlistCount = 0,
+  onCartClick,
+  onAddToCart,
+  isWishlisted = false,
+  onToggleWishlist,
+}) {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(product.mainImage ?? product.thumbnails?.[0]);
   const [detailsOpen, setDetailsOpen] = useState(true);
@@ -45,7 +54,12 @@ function ProductPage({ product, searchProps, cartCount = 0, onCartClick, onAddTo
   };
 
   return (
-    <PageShell searchProps={searchProps} cartCount={cartCount} onCartClick={onCartClick}>
+    <PageShell
+      searchProps={searchProps}
+      cartCount={cartCount}
+      wishlistCount={wishlistCount}
+      onCartClick={onCartClick}
+    >
       <div className="grid flex-1 grid-cols-1 lg:grid-cols-[60%_40%]">
         <section className="relative px-6 pb-10 pt-0 sm:px-10 lg:px-14">
           <div className="mt-10 grid grid-cols-[56px_1fr] gap-8 sm:grid-cols-[70px_1fr] lg:mt-14">
@@ -138,6 +152,18 @@ function ProductPage({ product, searchProps, cartCount = 0, onCartClick, onAddTo
                   : cartSubmitting
                     ? "Adding"
                     : `Add to Cart • ${totalPrice} ${product.currency}`}
+              </button>
+
+              <button
+                type="button"
+                className={`mt-3 w-full rounded-full border px-4 py-3 text-xs tracking-[0.2em] uppercase transition ${
+                  isWishlisted
+                    ? "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
+                    : "border-slate-300 bg-white text-slate-600 hover:border-slate-500"
+                }`}
+                onClick={() => onToggleWishlist?.(product.id)}
+              >
+                {isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
               </button>
             </div>
 

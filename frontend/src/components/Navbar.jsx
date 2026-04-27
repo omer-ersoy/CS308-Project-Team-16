@@ -7,6 +7,7 @@ const noop = () => {};
 function Navbar({
   brandName = "Fragrance shop",
   cartCount = 0,
+  wishlistCount = 0,
   searchValue = "",
   onSearchChange = noop,
   onClearSearch = noop,
@@ -45,8 +46,13 @@ function Navbar({
                 </span>
               </button>
 
-              <div className="sans-ui rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-[10px] tracking-[0.3em] text-slate-500 uppercase shadow-[0_12px_24px_-22px_rgba(15,23,42,0.6)]">
-                Cart {cartCount}
+              <div className="flex items-center gap-2">
+                <div className="sans-ui rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-[10px] tracking-[0.3em] text-slate-500 uppercase shadow-[0_12px_24px_-22px_rgba(15,23,42,0.6)]">
+                  Wishlist {wishlistCount}
+                </div>
+                <div className="sans-ui rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-[10px] tracking-[0.3em] text-slate-500 uppercase shadow-[0_12px_24px_-22px_rgba(15,23,42,0.6)]">
+                  Cart {cartCount}
+                </div>
               </div>
             </div>
 
@@ -61,6 +67,13 @@ function Navbar({
                   onClick={() => navigate("/collections")}
                 >
                   Collections
+                </button>
+                <button
+                  type="button"
+                  className={navButtonClass(pathname === "/wishlist")}
+                  onClick={() => navigate("/wishlist")}
+                >
+                  Wishlist
                 </button>
                 <button
                   type="button"

@@ -1,8 +1,13 @@
 import PageShell from "../components/PageShell";
 
-function AboutPage({ searchProps, cartCount = 0, onCartClick }) {
+function AboutPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick }) {
   return (
-    <PageShell searchProps={searchProps} cartCount={cartCount} onCartClick={onCartClick}>
+    <PageShell
+      searchProps={searchProps}
+      cartCount={cartCount}
+      wishlistCount={wishlistCount}
+      onCartClick={onCartClick}
+    >
       <main className="flex-1 px-6 py-10 sm:px-10 lg:px-14">
         <section className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="border border-slate-200 bg-white px-8 py-10 shadow-sm sm:px-10">
