@@ -6,6 +6,8 @@ import PageShell from "./components/PageShell";
 import ProductPage from "./pages/ProductPage";
 import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
+import HelpPage from "./pages/HelpPage";
+import ContactPage from "./pages/ContactPage";
 import CollectionsPage from "./pages/CollectionsPage";
 import AdminPage from "./pages/AdminPage";
 import WishlistPage from "./pages/WishlistPage";
@@ -357,6 +359,28 @@ function AppContent() {
             path="/about"
             element={
               <AboutPage
+                searchProps={searchProps}
+                cartCount={cartCount}
+                wishlistCount={wishlistCount}
+                onCartClick={() => setCartOpen(true)}
+              />
+            }
+          />
+          <Route
+            path="/help"
+            element={
+              <HelpPage
+                searchProps={searchProps}
+                cartCount={cartCount}
+                wishlistCount={wishlistCount}
+                onCartClick={() => setCartOpen(true)}
+              />
+            }
+          />
+          <Route
+            path="/contact"
+            element={
+              <ContactPage
                 searchProps={searchProps}
                 cartCount={cartCount}
                 wishlistCount={wishlistCount}

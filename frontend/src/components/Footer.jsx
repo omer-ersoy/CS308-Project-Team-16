@@ -29,10 +29,18 @@ function Footer() {
             >
               About
             </button>
-            <button type="button" className="rounded-full border border-transparent px-3 py-1.5 transition hover:border-slate-200 hover:bg-white hover:text-slate-800">
+            <button
+              type="button"
+              className="rounded-full border border-transparent px-3 py-1.5 transition hover:border-slate-200 hover:bg-white hover:text-slate-800"
+              onClick={() => navigate("/help")}
+            >
               Help
             </button>
-            <button type="button" className="rounded-full border border-transparent px-3 py-1.5 transition hover:border-slate-200 hover:bg-white hover:text-slate-800">
+            <button
+              type="button"
+              className="rounded-full border border-transparent px-3 py-1.5 transition hover:border-slate-200 hover:bg-white hover:text-slate-800"
+              onClick={() => navigate("/contact")}
+            >
               Contact
             </button>
           </nav>
