@@ -6,8 +6,11 @@ import { api } from "../lib/api";
 const adminTabs = [
   { id: "products", label: "Products" },
   { id: "categories", label: "Categories" },
+  { id: "reviews", label: "Reviews" },
   { id: "users", label: "Users" },
 ];
+
+const reviewRatings = [1, 2, 3, 4, 5];
 
 const emptyProductForm = {
   name: "",
@@ -25,6 +28,19 @@ const emptyCategoryForm = {
   name: "",
   description: "",
 };
+
+function formatReviewDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
 
 function ProductForm({ form, categories, isSaving, editingId, onChange, onSubmit, onCancel }) {
   return (
@@ -186,7 +202,9 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [users, setUsers] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [userDrafts, setUserDrafts] = useState({});
+  const [reviewDrafts, setReviewDrafts] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -200,6 +218,10 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
     () => new Map(categories.map((category) => [category.id, category.name])),
     [categories],
   );
+  const productNameById = useMemo(
+    () => new Map(products.map((product) => [product.id, product.name])),
+    [products],
+  );
 
   const loadAdminData = useCallback(async () => {
     if (!token) {
@@ -210,14 +232,16 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
     setError("");
 
     try {
-      const [nextProducts, nextCategories, nextUsers] = await Promise.all([
+      const [nextProducts, nextCategories, nextUsers, nextReviews] = await Promise.all([
         api.listAdminProducts(token),
         api.listAdminCategories(token),
         api.listAdminUsers(token),
+        api.listAdminReviews(token),
       ]);
       setProducts(nextProducts);
       setCategories(nextCategories);
       setUsers(nextUsers);
+      setReviews(nextReviews);
     } catch (loadError) {
       setError(loadError.message);
     } finally {
@@ -243,6 +267,20 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
       ),
     );
   }, [users]);
+
+  useEffect(() => {
+    setReviewDrafts(
+      Object.fromEntries(
+        reviews.map((review) => [
+          review.id,
+          {
+            rating: String(review.rating),
+            comment: review.comment,
+          },
+        ]),
+      ),
+    );
+  }, [reviews]);
 
   const handleProductFormChange = (event) => {
     const { name, value } = event.target;
@@ -403,6 +441,60 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
     }
   };
 
+  const handleReviewDraftChange = (reviewId, field, value) => {
+    setReviewDrafts((current) => ({
+      ...current,
+      [reviewId]: {
+        ...current[reviewId],
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleSaveReview = async (reviewId) => {
+    const draft = reviewDrafts[reviewId];
+    if (!draft) {
+      return;
+    }
+
+    setError("");
+    setNotice("");
+    setSavingKey(`review-${reviewId}`);
+
+    try {
+      await api.updateAdminReview(token, reviewId, {
+        rating: Number(draft.rating),
+        comment: draft.comment,
+      });
+      setNotice("Review updated.");
+      await loadAdminData();
+    } catch (saveError) {
+      setError(saveError.message);
+    } finally {
+      setSavingKey("");
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm("Delete this review?")) {
+      return;
+    }
+
+    setError("");
+    setNotice("");
+    setSavingKey(`delete-review-${reviewId}`);
+
+    try {
+      await api.deleteAdminReview(token, reviewId);
+      setNotice("Review deleted.");
+      await loadAdminData();
+    } catch (deleteError) {
+      setError(deleteError.message);
+    } finally {
+      setSavingKey("");
+    }
+  };
+
   return (
     <PageShell
       searchProps={searchProps}
@@ -427,6 +519,9 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
               </span>
               <span className="rounded-full border border-sky-300/40 bg-sky-400/10 px-4 py-2 text-sky-100">
                 {categories.length} categories
+              </span>
+              <span className="rounded-full border border-fuchsia-300/40 bg-fuchsia-400/10 px-4 py-2 text-fuchsia-100">
+                {reviews.length} reviews
               </span>
               <span className="rounded-full border border-amber-300/40 bg-amber-400/10 px-4 py-2 text-amber-100">
                 {users.length} users
@@ -587,6 +682,81 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
                 </div>
               </section>
             </div>
+          ) : activeTab === "reviews" ? (
+            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-[11px] tracking-[0.28em] text-slate-500 uppercase">Review moderation</p>
+              <div className="mt-6 space-y-4">
+                {reviews.length === 0 ? (
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
+                    No product reviews yet.
+                  </div>
+                ) : (
+                  reviews.map((review) => {
+                    const draft = reviewDrafts[review.id] ?? {
+                      rating: String(review.rating),
+                      comment: review.comment,
+                    };
+
+                    return (
+                      <article key={review.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                          <div>
+                            <h3 className="text-xl font-medium text-slate-800">
+                              {productNameById.get(review.product_id) ?? `Product #${review.product_id}`}
+                            </h3>
+                            <p className="mt-1 text-sm text-slate-500">
+                              {review.user_full_name} · {formatReviewDate(review.updated_at)}
+                            </p>
+                          </div>
+                          <select
+                            value={draft.rating}
+                            onChange={(event) =>
+                              handleReviewDraftChange(review.id, "rating", event.target.value)
+                            }
+                            className="border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
+                          >
+                            {reviewRatings.map((rating) => (
+                              <option key={rating} value={String(rating)}>
+                                {rating} star{rating === 1 ? "" : "s"}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <textarea
+                          value={draft.comment}
+                          onChange={(event) =>
+                            handleReviewDraftChange(review.id, "comment", event.target.value)
+                          }
+                          rows="4"
+                          maxLength="2000"
+                          className="mt-4 w-full border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+                        />
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleSaveReview(review.id)}
+                            disabled={savingKey === `review-${review.id}`}
+                            className="bg-slate-900 px-5 py-3 text-xs tracking-[0.2em] text-white uppercase disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReview(review.id)}
+                            disabled={savingKey === `delete-review-${review.id}`}
+                            className="bg-red-600 px-5 py-3 text-xs tracking-[0.2em] text-white uppercase disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })
+                )}
+              </div>
+            </section>
           ) : (
             <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-[11px] tracking-[0.28em] text-slate-500 uppercase">User management</p>
