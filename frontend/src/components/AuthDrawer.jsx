@@ -104,7 +104,7 @@ function AuthDrawer() {
       />
 
       <aside
-        className={`fixed right-0 top-0 z-50 flex h-dvh w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out sm:max-w-lg ${authOpen ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed right-0 top-0 z-50 flex h-dvh w-full max-w-md flex-col border-l border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,249,248,0.98))] shadow-2xl transition-transform duration-300 ease-out sm:max-w-lg ${authOpen ? "translate-x-0" : "translate-x-full"}`}
         aria-hidden={!authOpen}
         aria-modal={authOpen}
         role="dialog"
@@ -192,7 +192,7 @@ function AuthDrawer() {
               <button
                 type="submit"
                 disabled={authLoading}
-                className="w-full bg-slate-900 px-4 py-3.5 text-xs font-medium tracking-[0.2em] text-white uppercase transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full rounded-full bg-slate-900 px-4 py-3.5 text-xs font-medium tracking-[0.2em] text-white uppercase transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {authLoading ? "Logging in" : "Log in"}
               </button>
@@ -253,7 +253,7 @@ function AuthDrawer() {
               <button
                 type="submit"
                 disabled={authLoading}
-                className="mt-2 w-full bg-slate-900 px-4 py-3.5 text-xs font-medium tracking-[0.2em] text-white uppercase transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-2 w-full rounded-full bg-slate-900 px-4 py-3.5 text-xs font-medium tracking-[0.2em] text-white uppercase transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {authLoading ? "Signing up" : "Sign up"}
               </button>
@@ -261,7 +261,7 @@ function AuthDrawer() {
           )}
         </div>
 
-        <div className="shrink-0 border-t border-slate-200 bg-slate-800 px-6 py-6 text-white sm:px-8">
+        <div className="shrink-0 border-t border-slate-200 bg-slate-900 px-6 py-6 text-white sm:px-8">
           <p className="text-xl font-light tracking-tight">Member benefits</p>
           <p className="mt-2 text-sm text-slate-300">Exclusive perks when you shop with us.</p>
           <ul className="mt-5 space-y-4 text-sm text-slate-200">
