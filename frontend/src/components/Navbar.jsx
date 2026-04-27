@@ -15,7 +15,7 @@ function Navbar({
   onCartClick = noop,
 }) {
   const navigate = useNavigate();
-  const { openAuth, isLoggedIn } = useAuth();
+  const { openAuth, isLoggedIn, isAdmin } = useAuth();
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[64%_36%]">
@@ -65,6 +65,15 @@ function Navbar({
             >
               {isLoggedIn ? "My account" : "Account"}
             </button>
+            {isAdmin && (
+              <button
+                type="button"
+                className="cursor-pointer hover:text-slate-800"
+                onClick={() => navigate("/admin")}
+              >
+                Admin
+              </button>
+            )}
             <button
               type="button"
               className="cursor-pointer hover:text-slate-800"

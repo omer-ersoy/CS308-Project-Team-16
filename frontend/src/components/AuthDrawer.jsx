@@ -69,7 +69,6 @@ function AuthDrawer() {
         full_name: `${firstName} ${lastName}`.trim(),
         email: String(formData.get("email") ?? ""),
         password: String(formData.get("password") ?? ""),
-        role: "customer",
       });
     } catch (error) {
       setAuthError(error.message);
