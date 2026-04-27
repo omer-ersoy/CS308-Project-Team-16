@@ -9,6 +9,7 @@ import AboutPage from "./pages/AboutPage";
 import CollectionsPage from "./pages/CollectionsPage";
 import { api } from "./lib/api";
 import { adaptProduct } from "./lib/productAdapter";
+import SalesManagerPage from "./pages/SalesManagerPage";
 
 const CART_ID = 1;
 
@@ -243,6 +244,12 @@ function App() {
                   cartCount={cartCount}
                   onCartClick={() => setCartOpen(true)}
                 />
+              }
+            />
+            <Route
+              path="/sales-manager"
+              element={
+                <SalesManagerPage />
               }
             />
             <Route
