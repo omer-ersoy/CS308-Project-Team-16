@@ -22,6 +22,7 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(readStoredUser);
   const [authLoading, setAuthLoading] = useState(false);
   const isLoggedIn = Boolean(token);
+  const isAdmin = currentUser?.role === "admin";
 
   useEffect(() => {
     if (token) {
@@ -41,6 +42,17 @@ export function AuthProvider({ children }) {
     }
   }, [currentUser]);
 
+  const refreshCurrentUser = useCallback(async (accessToken = token) => {
+    if (!accessToken) {
+      setCurrentUser(null);
+      return null;
+    }
+
+    const user = await api.getCurrentUser(accessToken);
+    setCurrentUser(user);
+    return user;
+  }, [token]);
+
   useEffect(() => {
     if (!token) {
       return undefined;
@@ -48,8 +60,7 @@ export function AuthProvider({ children }) {
 
     let isMounted = true;
 
-    api
-      .getCurrentUser(token)
+    refreshCurrentUser(token)
       .then((user) => {
         if (isMounted) {
           setCurrentUser(user);
@@ -65,7 +76,7 @@ export function AuthProvider({ children }) {
     return () => {
       isMounted = false;
     };
-  }, [token]);
+  }, [refreshCurrentUser, token]);
 
   const openAuth = useCallback((tab = "login") => {
     setAuthTab(tab);
@@ -115,7 +126,9 @@ export function AuthProvider({ children }) {
       authOpen,
       authTab,
       setAuthTab,
+      token,
       isLoggedIn,
+      isAdmin,
       currentUser,
       authLoading,
       openAuth,
@@ -123,11 +136,14 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      refreshCurrentUser,
     }),
     [
       authOpen,
       authTab,
+      token,
       isLoggedIn,
+      isAdmin,
       currentUser,
       authLoading,
       openAuth,
@@ -135,6 +151,7 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      refreshCurrentUser,
     ],
   );
 
