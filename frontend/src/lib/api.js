@@ -37,6 +37,33 @@ export const api = {
     return request("/products");
   },
 
+  listProductReviews(productId) {
+    return request(`/products/${productId}/reviews`);
+  },
+
+  createProductReview(token, productId, payload) {
+    return request(`/products/${productId}/reviews`, {
+      method: "POST",
+      token,
+      body: payload,
+    });
+  },
+
+  updateProductReview(token, productId, reviewId, payload) {
+    return request(`/products/${productId}/reviews/${reviewId}`, {
+      method: "PATCH",
+      token,
+      body: payload,
+    });
+  },
+
+  deleteProductReview(token, productId, reviewId) {
+    return request(`/products/${productId}/reviews/${reviewId}`, {
+      method: "DELETE",
+      token,
+    });
+  },
+
   listCategories() {
     return request("/categories");
   },
@@ -153,6 +180,27 @@ export const api = {
       method: "PATCH",
       token,
       body: payload,
+    });
+  },
+
+  listAdminReviews(token) {
+    return request("/admin/reviews", {
+      token,
+    });
+  },
+
+  updateAdminReview(token, reviewId, payload) {
+    return request(`/admin/reviews/${reviewId}`, {
+      method: "PATCH",
+      token,
+      body: payload,
+    });
+  },
+
+  deleteAdminReview(token, reviewId) {
+    return request(`/admin/reviews/${reviewId}`, {
+      method: "DELETE",
+      token,
     });
   },
 };

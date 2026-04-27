@@ -1,14 +1,15 @@
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_admin_user
-from app.db.models import Category, Product, User
+from app.db.models import Category, Product, ProductReview, User
 from app.db.session import get_db
 from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
+from app.schemas.review import ProductReviewRead, ProductReviewUpdate
 from app.schemas.user import UserRead, UserUpdate
 
 
@@ -20,6 +21,17 @@ def require_category(db: Session, category_id: int) -> Category:
     if category is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Category not found")
     return category
+
+
+def get_admin_review(db: Session, review_id: int) -> ProductReview:
+    review = db.scalar(
+        select(ProductReview)
+        .options(selectinload(ProductReview.user))
+        .where(ProductReview.id == review_id)
+    )
+    if review is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
+    return review
 
 
 @router.get("/products", response_model=list[ProductRead])
@@ -194,3 +206,38 @@ def update_user(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email is already registered")
     db.refresh(user)
     return user
+
+
+@router.get("/reviews", response_model=list[ProductReviewRead])
+def list_admin_reviews(_: UserRead = Depends(get_admin_user), db: Session = Depends(get_db)) -> list[ProductReview]:
+    return db.scalars(
+        select(ProductReview)
+        .options(selectinload(ProductReview.user))
+        .order_by(ProductReview.created_at.desc(), ProductReview.id.desc())
+    ).all()
+
+
+@router.patch("/reviews/{review_id}", response_model=ProductReviewRead)
+def update_admin_review(
+    review_id: int,
+    payload: ProductReviewUpdate,
+    _: UserRead = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+) -> ProductReview:
+    review = get_admin_review(db, review_id)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(review, field, value)
+
+    db.commit()
+    return get_admin_review(db, review_id)
+
+
+@router.delete("/reviews/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_admin_review(
+    review_id: int,
+    _: UserRead = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+) -> None:
+    review = get_admin_review(db, review_id)
+    db.delete(review)
+    db.commit()
