@@ -13,6 +13,7 @@ import AdminPage from "./pages/AdminPage";
 import WishlistPage from "./pages/WishlistPage";
 import { api } from "./lib/api";
 import { adaptProduct } from "./lib/productAdapter";
+import SalesManagerPage from "./pages/SalesManagerPage";
 
 const CART_ID = 1;
 const WISHLIST_STORAGE_KEY = "wishlist-product-ids";
@@ -442,6 +443,10 @@ function AppContent() {
                 onCatalogChange={handleCatalogChange}
               />
             }
+          />
+          <Route
+            path="/sales-manager"
+            element={<SalesManagerPage />}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
