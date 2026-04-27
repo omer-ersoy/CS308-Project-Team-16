@@ -180,7 +180,7 @@ function CategoryForm({ form, isSaving, editingId, onChange, onSubmit, onCancel 
   );
 }
 
-function AdminPage({ searchProps, cartCount = 0, onCartClick, onCatalogChange }) {
+function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick, onCatalogChange }) {
   const { token, currentUser, refreshCurrentUser } = useAuth();
   const [activeTab, setActiveTab] = useState("products");
   const [products, setProducts] = useState([]);
@@ -404,7 +404,12 @@ function AdminPage({ searchProps, cartCount = 0, onCartClick, onCatalogChange })
   };
 
   return (
-    <PageShell searchProps={searchProps} cartCount={cartCount} onCartClick={onCartClick}>
+    <PageShell
+      searchProps={searchProps}
+      cartCount={cartCount}
+      wishlistCount={wishlistCount}
+      onCartClick={onCartClick}
+    >
       <main className="flex-1 px-6 py-10 sm:px-10 lg:px-14">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
           <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-linear-to-r from-slate-900 via-slate-800 to-slate-700 px-8 py-10 text-white shadow-xl">

@@ -8,18 +8,33 @@ import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
 import CollectionsPage from "./pages/CollectionsPage";
 import AdminPage from "./pages/AdminPage";
+import WishlistPage from "./pages/WishlistPage";
 import { api } from "./lib/api";
 import { adaptProduct } from "./lib/productAdapter";
 
 const CART_ID = 1;
+const WISHLIST_STORAGE_KEY = "wishlist-product-ids";
 
 function getCartItemCount(cart) {
   return cart?.items?.reduce((total, item) => total + item.quantity, 0) ?? 0;
 }
 
-function StateLayout({ searchProps, cartCount, onCartClick, eyebrow, title, description }) {
+function StateLayout({
+  searchProps,
+  cartCount,
+  wishlistCount,
+  onCartClick,
+  eyebrow,
+  title,
+  description,
+}) {
   return (
-    <PageShell searchProps={searchProps} cartCount={cartCount} onCartClick={onCartClick}>
+    <PageShell
+      searchProps={searchProps}
+      cartCount={cartCount}
+      wishlistCount={wishlistCount}
+      onCartClick={onCartClick}
+    >
       <main className="flex min-h-[calc(100vh-7rem)] flex-1 items-center justify-center px-6 py-16 sm:px-10 lg:px-14">
         <div className="max-w-xl border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
           <p className="text-[11px] tracking-[0.28em] text-slate-500 uppercase">{eyebrow}</p>
@@ -33,18 +48,29 @@ function StateLayout({ searchProps, cartCount, onCartClick, eyebrow, title, desc
   );
 }
 
-function ProductRoute({ searchProps, products, isLoading, cartCount, onCartClick, onAddToCart }) {
+function ProductRoute({
+  searchProps,
+  products,
+  isLoading,
+  cartCount,
+  wishlistCount,
+  onCartClick,
+  onAddToCart,
+  isWishlisted,
+  onToggleWishlist,
+}) {
   const { productId } = useParams();
   const product = products.find((item) => item.id === productId);
 
   if (isLoading) {
     return (
-      <StateLayout
-        searchProps={searchProps}
-        cartCount={cartCount}
-        onCartClick={onCartClick}
-        eyebrow="Product catalog"
-        title="Loading product."
+        <StateLayout
+          searchProps={searchProps}
+          cartCount={cartCount}
+          wishlistCount={wishlistCount}
+          onCartClick={onCartClick}
+          eyebrow="Product catalog"
+          title="Loading product."
         description="Product information is being loaded from the API."
       />
     );
@@ -52,12 +78,13 @@ function ProductRoute({ searchProps, products, isLoading, cartCount, onCartClick
 
   if (!product) {
     return (
-      <StateLayout
-        searchProps={searchProps}
-        cartCount={cartCount}
-        onCartClick={onCartClick}
-        eyebrow="Product catalog"
-        title="Product not found."
+        <StateLayout
+          searchProps={searchProps}
+          cartCount={cartCount}
+          wishlistCount={wishlistCount}
+          onCartClick={onCartClick}
+          eyebrow="Product catalog"
+          title="Product not found."
         description="This product is not available in the current catalog."
       />
     );
@@ -68,15 +95,23 @@ function ProductRoute({ searchProps, products, isLoading, cartCount, onCartClick
       product={product}
       searchProps={searchProps}
       cartCount={cartCount}
+      wishlistCount={wishlistCount}
       onCartClick={onCartClick}
       onAddToCart={onAddToCart}
+      isWishlisted={isWishlisted(product.id)}
+      onToggleWishlist={onToggleWishlist}
     />
   );
 }
 
-function SearchEmptyLayout({ searchProps, searchValue, cartCount, onCartClick }) {
+function SearchEmptyLayout({ searchProps, searchValue, cartCount, wishlistCount, onCartClick }) {
   return (
-    <PageShell searchProps={searchProps} cartCount={cartCount} onCartClick={onCartClick}>
+    <PageShell
+      searchProps={searchProps}
+      cartCount={cartCount}
+      wishlistCount={wishlistCount}
+      onCartClick={onCartClick}
+    >
       <main className="flex min-h-[calc(100vh-7rem)] flex-1 items-center justify-center px-6 py-16 sm:px-10 lg:px-14">
         <div className="max-w-xl border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
           <p className="text-[11px] tracking-[0.28em] text-slate-500 uppercase">Search results</p>
@@ -91,7 +126,7 @@ function SearchEmptyLayout({ searchProps, searchValue, cartCount, onCartClick })
   );
 }
 
-function AdminRoute({ searchProps, cartCount, onCartClick, onCatalogChange }) {
+function AdminRoute({ searchProps, cartCount, wishlistCount, onCartClick, onCatalogChange }) {
   const { isLoggedIn, isAdmin } = useAuth();
 
   if (!isLoggedIn || !isAdmin) {
@@ -102,6 +137,7 @@ function AdminRoute({ searchProps, cartCount, onCartClick, onCatalogChange }) {
     <AdminPage
       searchProps={searchProps}
       cartCount={cartCount}
+      wishlistCount={wishlistCount}
       onCartClick={onCartClick}
       onCatalogChange={onCatalogChange}
     />
@@ -118,6 +154,23 @@ function AppContent() {
   const [cartOpen, setCartOpen] = useState(false);
   const [removingItemId, setRemovingItemId] = useState(null);
   const [searchValue, setSearchValue] = useState("");
+  const [wishlistIds, setWishlistIds] = useState([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(WISHLIST_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setWishlistIds(parsed.map((id) => String(id)));
+      }
+    } catch {
+      setWishlistIds([]);
+    }
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -162,6 +215,18 @@ function AppContent() {
     };
   }, [catalogReloadKey]);
 
+  useEffect(() => {
+    localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(wishlistIds));
+  }, [wishlistIds]);
+
+  useEffect(() => {
+    const validIds = new Set(products.map((product) => product.id));
+    setWishlistIds((current) => {
+      const filtered = current.filter((id) => validIds.has(id));
+      return filtered.length === current.length ? current : filtered;
+    });
+  }, [products]);
+
   const normalizedSearch = searchValue.trim().toLowerCase();
   const filteredProducts = useMemo(() => {
     if (!normalizedSearch) {
@@ -199,6 +264,7 @@ function AppContent() {
 
   const isCatalogLoading = catalogStatus === "loading";
   const cartCount = getCartItemCount(cart);
+  const wishlistCount = wishlistIds.length;
   const isAdminRoute = location.pathname.startsWith("/admin");
   const showSearchEmpty =
     !isAdminRoute &&
@@ -229,6 +295,36 @@ function AppContent() {
     }
   }, []);
 
+  const handleToggleWishlist = useCallback((productId) => {
+    setWishlistIds((current) => {
+      if (current.includes(productId)) {
+        return current.filter((id) => id !== productId);
+      }
+      return [productId, ...current];
+    });
+  }, []);
+
+  const wishlistProductSet = useMemo(() => new Set(wishlistIds), [wishlistIds]);
+
+  const isWishlisted = useCallback(
+    (productId) => wishlistProductSet.has(productId),
+    [wishlistProductSet],
+  );
+
+  const wishlistProducts = useMemo(() => {
+    const byId = new Map(products.map((product) => [product.id, product]));
+    return wishlistIds.map((id) => byId.get(id)).filter(Boolean);
+  }, [products, wishlistIds]);
+
+  const filteredWishlistProducts = useMemo(() => {
+    if (!normalizedSearch) {
+      return wishlistProducts;
+    }
+
+    const filteredIds = new Set(filteredProducts.map((product) => product.id));
+    return wishlistProducts.filter((product) => filteredIds.has(product.id));
+  }, [filteredProducts, normalizedSearch, wishlistProducts]);
+
   return (
     <>
       {showSearchEmpty ? (
@@ -236,6 +332,7 @@ function AppContent() {
           searchProps={searchProps}
           searchValue={searchValue}
           cartCount={cartCount}
+          wishlistCount={wishlistCount}
           onCartClick={() => setCartOpen(true)}
         />
       ) : (
@@ -249,7 +346,10 @@ function AppContent() {
                 isLoading={isCatalogLoading}
                 error={catalogError}
                 cartCount={cartCount}
+                wishlistCount={wishlistCount}
                 onCartClick={() => setCartOpen(true)}
+                onToggleWishlist={handleToggleWishlist}
+                isWishlisted={isWishlisted}
               />
             }
           />
@@ -259,6 +359,7 @@ function AppContent() {
               <AboutPage
                 searchProps={searchProps}
                 cartCount={cartCount}
+                wishlistCount={wishlistCount}
                 onCartClick={() => setCartOpen(true)}
               />
             }
@@ -269,7 +370,24 @@ function AppContent() {
               <CollectionsPage
                 searchProps={searchProps}
                 cartCount={cartCount}
+                wishlistCount={wishlistCount}
                 onCartClick={() => setCartOpen(true)}
+              />
+            }
+          />
+          <Route
+            path="/wishlist"
+            element={
+              <WishlistPage
+                searchProps={searchProps}
+                products={filteredWishlistProducts}
+                isLoading={isCatalogLoading}
+                error={catalogError}
+                cartCount={cartCount}
+                wishlistCount={wishlistCount}
+                onCartClick={() => setCartOpen(true)}
+                onToggleWishlist={handleToggleWishlist}
+                isWishlisted={isWishlisted}
               />
             }
           />
@@ -281,8 +399,11 @@ function AppContent() {
                 products={products}
                 isLoading={isCatalogLoading}
                 cartCount={cartCount}
+                wishlistCount={wishlistCount}
                 onCartClick={() => setCartOpen(true)}
                 onAddToCart={handleAddToCart}
+                isWishlisted={isWishlisted}
+                onToggleWishlist={handleToggleWishlist}
               />
             }
           />
@@ -292,6 +413,7 @@ function AppContent() {
               <AdminRoute
                 searchProps={searchProps}
                 cartCount={cartCount}
+                wishlistCount={wishlistCount}
                 onCartClick={() => setCartOpen(true)}
                 onCatalogChange={handleCatalogChange}
               />
