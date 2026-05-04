@@ -1,6 +1,11 @@
 import PageShell from "../components/PageShell";
 
-function HelpPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick }) {
+function HelpPage({
+  searchProps,
+  cartCount = 0,
+  wishlistCount = 0,
+  onCartClick,
+}) {
   return (
     <PageShell
       searchProps={searchProps}
@@ -8,46 +13,62 @@ function HelpPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick }
       wishlistCount={wishlistCount}
       onCartClick={onCartClick}
     >
-      <main className="flex-1 px-6 py-10 sm:px-10 lg:px-14">
-        <section className="mx-auto max-w-6xl">
-          <div className="border border-slate-200 bg-white px-8 py-10 shadow-sm sm:px-10">
-            <p className="text-[11px] tracking-[0.28em] text-slate-500 uppercase">Help center</p>
-            <h1 className="mt-4 text-4xl font-light tracking-tight text-slate-800 sm:text-5xl">
-              How to move through the shop with ease.
-            </h1>
-            <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-600">
-              The site is built around calm discovery: search from the header, save favorites to your
-              wishlist, and open any fragrance for the full story before you buy.
+      <main className="flex flex-1 flex-col px-6 py-10 sm:px-10 lg:px-14 lg:py-14">
+        <div className="mx-auto w-full max-w-4xl">
+          <section className="mb-10">
+            <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
+              Help center
             </p>
-          </div>
+            <h1 className="mt-2 text-3xl font-light tracking-tight text-slate-800">
+              Customer Support & Project Status
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">
+              This page provides basic guidance for users and also reflects the
+              current implementation status of key flows in the system.
+            </p>
+          </section>
 
-          <div className="mt-8 grid gap-6 lg:grid-cols-2">
-            {[
-              [
-                "Search and browse",
-                "Use the header search to filter the catalog by name, notes, or description. Clear the field anytime to see the full grid again.",
-              ],
-              [
-                "Wishlist",
-                "Heart a product to keep it on your wishlist page. Your list stays in this browser so you can compare scents before adding them to the bag.",
-              ],
-              [
-                "Cart and checkout",
-                "Open the bag icon to review quantities and remove lines. Complete checkout when your team has wired the flow to the backend.",
-              ],
-              [
-                "Product detail",
-                "Each product page gathers imagery, notes, and volume in one place so you can decide without hunting through clutter.",
-              ],
-            ].map(([title, text]) => (
-              <article key={title} className="border border-slate-200 bg-[#f8faf9] px-7 py-7 shadow-sm">
-                <p className="text-[11px] tracking-[0.24em] text-slate-400 uppercase">Topic</p>
-                <h2 className="mt-3 text-2xl font-light tracking-tight text-slate-800">{title}</h2>
-                <p className="mt-3 text-sm leading-7 text-slate-600">{text}</p>
-              </article>
-            ))}
+          <div className="space-y-6">
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-medium text-slate-800">Shopping & Cart</h2>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                Users can browse products, search the catalog, add items to the
+                cart, and remove items from the cart drawer.
+              </p>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-medium text-slate-800">Checkout Status</h2>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                A checkout page is now available and the cart drawer checkout
+                button directs users to this flow.
+              </p>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                Payment processing and invoice generation are still pending
+                backend integration, so the current checkout page acts as the
+                frontend entry point of the checkout flow.
+              </p>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-medium text-slate-800">Orders & Invoices</h2>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                Invoice-related interfaces exist in the management side of the
+                project, but full order creation, payment completion, and invoice
+                generation are not yet connected end-to-end.
+              </p>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-medium text-slate-800">Notifications</h2>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                Wishlist-based in-app notifications are supported, while email
+                notification support is still pending backend mailing
+                integration.
+              </p>
+            </section>
           </div>
-        </section>
+        </div>
       </main>
     </PageShell>
   );
