@@ -14,6 +14,7 @@ import WishlistPage from "./pages/WishlistPage";
 import { api } from "./lib/api";
 import { adaptProduct } from "./lib/productAdapter";
 import SalesManagerPage from "./pages/SalesManagerPage";
+import CheckoutPage from "./pages/CheckoutPage";
 
 const CART_ID = 1;
 const WISHLIST_STORAGE_KEY = "wishlist-product-ids";
@@ -429,6 +430,17 @@ function AppContent() {
                 onAddToCart={handleAddToCart}
                 isWishlisted={isWishlisted}
                 onToggleWishlist={handleToggleWishlist}
+              />
+            }
+          />
+          <Route
+            path="/checkout"
+            element={
+              <CheckoutPage
+                searchProps={searchProps}
+                cartCount={cartCount}
+                wishlistCount={wishlistCount}
+                onCartClick={() => setCartOpen(true)}
               />
             }
           />

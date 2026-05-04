@@ -1,7 +1,10 @@
+import { useNavigate } from "react-router-dom";
+
 function CartDrawer({ open, cart, products, removingItemId = null, onClose, onRemoveItem }) {
   const productsByApiId = new Map(products.map((product) => [product.apiId, product]));
   const items = cart?.items ?? [];
   const totalAmount = Number(cart?.total_amount ?? 0);
+  const navigate = useNavigate();
 
   return (
     <>
@@ -61,9 +64,7 @@ function CartDrawer({ open, cart, products, removingItemId = null, onClose, onRe
                         {product?.name ?? `Product #${item.product_id}`}
                       </p>
                       <p className="mt-1 text-sm text-slate-500">Quantity: {item.quantity}</p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {unitPrice} USD each
-                      </p>
+                      <p className="mt-1 text-sm text-slate-500">{unitPrice} USD each</p>
                     </div>
                     <button
                       type="button"
@@ -86,9 +87,14 @@ function CartDrawer({ open, cart, products, removingItemId = null, onClose, onRe
             <span>Total</span>
             <span className="font-medium text-slate-900">{totalAmount} USD</span>
           </div>
+
           <button
             type="button"
             disabled={items.length === 0}
+            onClick={() => {
+              onClose?.();
+              navigate("/checkout");
+            }}
             className="mt-4 w-full rounded-full bg-slate-900 px-4 py-3.5 text-xs font-medium tracking-[0.2em] text-white uppercase transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Checkout
