@@ -11,6 +11,19 @@ const adminTabs = [
 ];
 
 const reviewRatings = [1, 2, 3, 4, 5];
+const reviewStatuses = [
+  { value: "pending", label: "Pending" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
+];
+const reviewStatusLabels = Object.fromEntries(
+  reviewStatuses.map((status) => [status.value, status.label]),
+);
+const reviewStatusClasses = {
+  pending: "border-amber-200 bg-amber-50 text-amber-700",
+  approved: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  rejected: "border-red-200 bg-red-50 text-red-700",
+};
 
 const emptyProductForm = {
   name: "",
@@ -276,6 +289,7 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
           {
             rating: String(review.rating),
             comment: review.comment,
+            status: review.status ?? "pending",
           },
         ]),
       ),
@@ -465,8 +479,25 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
       await api.updateAdminReview(token, reviewId, {
         rating: Number(draft.rating),
         comment: draft.comment,
+        status: draft.status,
       });
       setNotice("Review updated.");
+      await loadAdminData();
+    } catch (saveError) {
+      setError(saveError.message);
+    } finally {
+      setSavingKey("");
+    }
+  };
+
+  const handleSetReviewStatus = async (reviewId, status) => {
+    setError("");
+    setNotice("");
+    setSavingKey(`review-status-${reviewId}-${status}`);
+
+    try {
+      await api.updateAdminReview(token, reviewId, { status });
+      setNotice(`Review ${reviewStatusLabels[status].toLowerCase()}.`);
       await loadAdminData();
     } catch (saveError) {
       setError(saveError.message);
@@ -695,6 +726,7 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
                     const draft = reviewDrafts[review.id] ?? {
                       rating: String(review.rating),
                       comment: review.comment,
+                      status: review.status ?? "pending",
                     };
 
                     return (
@@ -707,20 +739,42 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
                             <p className="mt-1 text-sm text-slate-500">
                               {review.user_full_name} · {formatReviewDate(review.updated_at)}
                             </p>
+                            <span
+                              className={`mt-3 inline-flex border px-3 py-1 text-[11px] tracking-[0.18em] uppercase ${
+                                reviewStatusClasses[review.status] ?? "border-slate-200 bg-white text-slate-600"
+                              }`}
+                            >
+                              {reviewStatusLabels[review.status] ?? review.status}
+                            </span>
                           </div>
-                          <select
-                            value={draft.rating}
-                            onChange={(event) =>
-                              handleReviewDraftChange(review.id, "rating", event.target.value)
-                            }
-                            className="border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
-                          >
-                            {reviewRatings.map((rating) => (
-                              <option key={rating} value={String(rating)}>
-                                {rating} star{rating === 1 ? "" : "s"}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex flex-wrap gap-2 sm:justify-end">
+                            <select
+                              value={draft.status}
+                              onChange={(event) =>
+                                handleReviewDraftChange(review.id, "status", event.target.value)
+                              }
+                              className="border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
+                            >
+                              {reviewStatuses.map((status) => (
+                                <option key={status.value} value={status.value}>
+                                  {status.label}
+                                </option>
+                              ))}
+                            </select>
+                            <select
+                              value={draft.rating}
+                              onChange={(event) =>
+                                handleReviewDraftChange(review.id, "rating", event.target.value)
+                              }
+                              className="border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
+                            >
+                              {reviewRatings.map((rating) => (
+                                <option key={rating} value={String(rating)}>
+                                  {rating} star{rating === 1 ? "" : "s"}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
 
                         <textarea
@@ -734,6 +788,26 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
                         />
 
                         <div className="mt-4 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleSetReviewStatus(review.id, "approved")}
+                            disabled={
+                              review.status === "approved" || savingKey === `review-status-${review.id}-approved`
+                            }
+                            className="bg-emerald-600 px-5 py-3 text-xs tracking-[0.2em] text-white uppercase disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSetReviewStatus(review.id, "rejected")}
+                            disabled={
+                              review.status === "rejected" || savingKey === `review-status-${review.id}-rejected`
+                            }
+                            className="bg-red-600 px-5 py-3 text-xs tracking-[0.2em] text-white uppercase disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Reject
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleSaveReview(review.id)}

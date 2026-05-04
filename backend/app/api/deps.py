@@ -10,9 +10,10 @@ from app.schemas.user import UserRead
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_optional_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> UserRead:
+def get_user_from_token(token: str, db: Session) -> UserRead:
     subject = decode_access_token(token)
     if not subject:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
@@ -30,6 +31,19 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
     return UserRead.model_validate(user)
+
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> UserRead:
+    return get_user_from_token(token, db)
+
+
+def get_optional_current_user(
+    token: str | None = Depends(oauth2_optional_scheme),
+    db: Session = Depends(get_db),
+) -> UserRead | None:
+    if token is None:
+        return None
+    return get_user_from_token(token, db)
 
 
 def get_admin_user(current_user: UserRead = Depends(get_current_user)) -> UserRead:

@@ -37,8 +37,10 @@ export const api = {
     return request("/products");
   },
 
-  listProductReviews(productId) {
-    return request(`/products/${productId}/reviews`);
+  listProductReviews(productId, token) {
+    return request(`/products/${productId}/reviews`, {
+      token,
+    });
   },
 
   createProductReview(token, productId, payload) {
