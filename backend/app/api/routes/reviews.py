@@ -1,10 +1,10 @@
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_optional_current_user
 from app.db.models import Product, ProductReview
 from app.db.session import get_db
 from app.schemas.review import ProductReviewCreate, ProductReviewRead, ProductReviewUpdate
@@ -33,12 +33,20 @@ def get_product_review(db: Session, product_id: int, review_id: int) -> ProductR
 
 
 @router.get("/{product_id}/reviews", response_model=list[ProductReviewRead])
-def list_product_reviews(product_id: int, db: Session = Depends(get_db)) -> list[ProductReview]:
+def list_product_reviews(
+    product_id: int,
+    current_user: UserRead | None = Depends(get_optional_current_user),
+    db: Session = Depends(get_db),
+) -> list[ProductReview]:
     require_product(db, product_id)
+    visibility_filter = ProductReview.status == "approved"
+    if current_user is not None:
+        visibility_filter = or_(visibility_filter, ProductReview.user_id == current_user.id)
+
     return db.scalars(
         select(ProductReview)
         .options(selectinload(ProductReview.user))
-        .where(ProductReview.product_id == product_id)
+        .where(ProductReview.product_id == product_id, visibility_filter)
         .order_by(ProductReview.created_at.desc(), ProductReview.id.desc())
     ).all()
 
@@ -86,6 +94,7 @@ def update_product_review(
 
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(review, field, value)
+    review.status = "pending"
 
     db.commit()
     return get_product_review(db, product_id, review_id)

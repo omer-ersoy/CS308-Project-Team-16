@@ -57,6 +57,7 @@ class ProductReview(Base):
     __tablename__ = "product_reviews"
     __table_args__ = (
         CheckConstraint("rating >= 1 AND rating <= 5", name="ck_product_reviews_rating_range"),
+        CheckConstraint("status IN ('pending', 'approved', 'rejected')", name="ck_product_reviews_status"),
         UniqueConstraint("product_id", "user_id", name="uq_product_reviews_product_user"),
     )
 
@@ -65,6 +66,7 @@ class ProductReview(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     rating: Mapped[int] = mapped_column(Integer)
     comment: Mapped[str] = mapped_column(Text())
+    status: Mapped[str] = mapped_column(String(32), default="pending", server_default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

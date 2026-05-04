@@ -103,7 +103,7 @@ function HomePage({
                     key={product.id}
                     product={product}
                     onToggleWishlist={onToggleWishlist}
-                    isWishlisted={isWishlisted}
+                    isWishlisted={isWishlisted?.(product.id)}
                   />
                 ))}
               </div>

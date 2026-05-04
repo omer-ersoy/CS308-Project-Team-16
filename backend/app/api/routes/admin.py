@@ -1,4 +1,4 @@
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -9,7 +9,7 @@ from app.db.models import Category, Product, ProductReview, User
 from app.db.session import get_db
 from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
-from app.schemas.review import ProductReviewRead, ProductReviewUpdate
+from app.schemas.review import ProductReviewAdminUpdate, ProductReviewRead
 from app.schemas.user import UserRead, UserUpdate
 
 
@@ -213,14 +213,18 @@ def list_admin_reviews(_: UserRead = Depends(get_admin_user), db: Session = Depe
     return db.scalars(
         select(ProductReview)
         .options(selectinload(ProductReview.user))
-        .order_by(ProductReview.created_at.desc(), ProductReview.id.desc())
+        .order_by(
+            case((ProductReview.status == "pending", 0), else_=1),
+            ProductReview.created_at.desc(),
+            ProductReview.id.desc(),
+        )
     ).all()
 
 
 @router.patch("/reviews/{review_id}", response_model=ProductReviewRead)
 def update_admin_review(
     review_id: int,
-    payload: ProductReviewUpdate,
+    payload: ProductReviewAdminUpdate,
     _: UserRead = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ) -> ProductReview:

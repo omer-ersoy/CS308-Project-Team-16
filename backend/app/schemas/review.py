@@ -1,6 +1,9 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+ReviewStatus = Literal["pending", "approved", "rejected"]
 
 
 class ProductReviewBase(BaseModel):
@@ -38,11 +41,16 @@ class ProductReviewUpdate(BaseModel):
         return stripped
 
 
+class ProductReviewAdminUpdate(ProductReviewUpdate):
+    status: ReviewStatus | None = None
+
+
 class ProductReviewRead(ProductReviewBase):
     id: int
     product_id: int
     user_id: int
     user_full_name: str
+    status: ReviewStatus
     created_at: datetime
     updated_at: datetime
 

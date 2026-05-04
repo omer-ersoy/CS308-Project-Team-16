@@ -4,6 +4,16 @@ import { useAuth } from "../context/AuthContext";
 import { api } from "../lib/api";
 
 const REVIEW_STARS = [1, 2, 3, 4, 5];
+const REVIEW_STATUS_LABELS = {
+  pending: "Pending approval",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+const REVIEW_STATUS_MESSAGES = {
+  pending: "Your review is waiting for admin approval.",
+  approved: "Your approved review is public.",
+  rejected: "Your review was rejected. Update it to send it back for approval.",
+};
 
 function RatingStars({ rating = 0, interactive = false, onChange }) {
   return (
@@ -72,10 +82,10 @@ function ProductPage({
   const [reviewError, setReviewError] = useState("");
 
   const refreshReviews = useCallback(async () => {
-    const nextReviews = await api.listProductReviews(product.apiId);
+    const nextReviews = await api.listProductReviews(product.apiId, token);
     setReviews(nextReviews);
     return nextReviews;
-  }, [product.apiId]);
+  }, [product.apiId, token]);
 
   useEffect(() => {
     setQuantity(1);
@@ -94,7 +104,7 @@ function ProductPage({
     setReviewsError("");
 
     api
-      .listProductReviews(product.apiId)
+      .listProductReviews(product.apiId, token)
       .then((nextReviews) => {
         if (isMounted) {
           setReviews(nextReviews);
@@ -114,7 +124,7 @@ function ProductPage({
     return () => {
       isMounted = false;
     };
-  }, [product.apiId]);
+  }, [product.apiId, token]);
 
   const ownReview = useMemo(() => {
     if (!currentUser) {
@@ -123,6 +133,11 @@ function ProductPage({
 
     return reviews.find((review) => review.user_id === currentUser.id) ?? null;
   }, [currentUser, reviews]);
+
+  const approvedReviews = useMemo(
+    () => reviews.filter((review) => review.status === "approved"),
+    [reviews],
+  );
 
   useEffect(() => {
     if (ownReview) {
@@ -135,13 +150,13 @@ function ProductPage({
   }, [ownReview, product.apiId]);
 
   const averageRating = useMemo(() => {
-    if (reviews.length === 0) {
+    if (approvedReviews.length === 0) {
       return 0;
     }
 
-    const total = reviews.reduce((sum, review) => sum + review.rating, 0);
-    return total / reviews.length;
-  }, [reviews]);
+    const total = approvedReviews.reduce((sum, review) => sum + review.rating, 0);
+    return total / approvedReviews.length;
+  }, [approvedReviews]);
 
   const decreaseQuantity = () => setQuantity((current) => Math.max(1, current - 1));
   const stockCount = product.stock ?? 0;
@@ -149,7 +164,7 @@ function ProductPage({
     setQuantity((current) => Math.min(stockCount || 1, current + 1));
   const thumbnails = product.thumbnails ?? [];
   const totalPrice = product.price * quantity;
-  const reviewCountLabel = `${reviews.length} review${reviews.length === 1 ? "" : "s"}`;
+  const reviewCountLabel = `${approvedReviews.length} review${approvedReviews.length === 1 ? "" : "s"}`;
 
   const handleAddToCart = async () => {
     if (!onAddToCart) {
@@ -196,7 +211,7 @@ function ProductPage({
       }
 
       await refreshReviews();
-      setReviewMessage(ownReview ? "Review updated." : "Review submitted.");
+      setReviewMessage(ownReview ? "Review updated and sent for approval." : "Review submitted for approval.");
     } catch (error) {
       setReviewError(error.message);
     } finally {
@@ -391,7 +406,7 @@ function ProductPage({
             <div>
               <p className="text-[11px] tracking-[0.3em] text-slate-500 uppercase">Customer reviews</p>
               <h2 className="mt-3 text-3xl font-light tracking-tight text-slate-800">
-                {reviews.length > 0 ? `${averageRating.toFixed(1)} out of 5` : "No ratings yet"}
+                {approvedReviews.length > 0 ? `${averageRating.toFixed(1)} out of 5` : "No ratings yet"}
               </h2>
               <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-500">
                 <RatingStars rating={averageRating} />
@@ -402,6 +417,11 @@ function ProductPage({
                 <h3 className="text-lg font-medium text-slate-800">
                   {ownReview ? "Edit your review" : "Write a review"}
                 </h3>
+                {ownReview && (
+                  <p className="mt-2 text-sm text-slate-500">
+                    {REVIEW_STATUS_MESSAGES[ownReview.status] ?? REVIEW_STATUS_LABELS[ownReview.status] ?? ""}
+                  </p>
+                )}
 
                 {isLoggedIn ? (
                   <>
@@ -423,7 +443,7 @@ function ProductPage({
                         disabled={reviewSubmitting}
                         className="rounded-full bg-slate-900 px-5 py-3 text-xs tracking-[0.2em] text-white uppercase disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {reviewSubmitting ? "Saving" : ownReview ? "Update review" : "Submit review"}
+                        {reviewSubmitting ? "Saving" : ownReview ? "Update review" : "Submit for approval"}
                       </button>
                       {ownReview && (
                         <button
@@ -469,12 +489,12 @@ function ProductPage({
                 <div className="border border-red-100 bg-red-50 p-5 text-sm text-red-600">
                   {reviewsError}
                 </div>
-              ) : reviews.length === 0 ? (
+              ) : approvedReviews.length === 0 ? (
                 <div className="border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
                   No customer comments yet.
                 </div>
               ) : (
-                reviews.map((review) => (
+                approvedReviews.map((review) => (
                   <article key={review.id} className="border border-slate-200 bg-slate-50 p-5">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
