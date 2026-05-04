@@ -9,7 +9,7 @@ class CartItemRead(BaseModel):
     quantity: int
     unit_price: Decimal
 
-    model_config = ConfigDict()
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CartAddItem(BaseModel):
@@ -23,4 +23,4 @@ class CartRead(BaseModel):
     items: list[CartItemRead]
     total_amount: Decimal
 
-    model_config = ConfigDict()
+    model_config = ConfigDict(from_attributes=True)

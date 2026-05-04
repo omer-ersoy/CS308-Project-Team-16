@@ -13,7 +13,7 @@ function CartDrawer({ open, cart, products, removingItemId = null, onClose, onRe
       />
 
       <aside
-        className={`fixed right-0 top-0 z-50 flex h-dvh w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out ${open ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed right-0 top-0 z-50 flex h-dvh w-full max-w-md flex-col border-l border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,249,248,0.98))] shadow-2xl transition-transform duration-300 ease-out ${open ? "translate-x-0" : "translate-x-full"}`}
         aria-hidden={!open}
         aria-modal={open}
         role="dialog"
@@ -81,7 +81,7 @@ function CartDrawer({ open, cart, products, removingItemId = null, onClose, onRe
           )}
         </div>
 
-        <div className="shrink-0 border-t border-slate-200 px-6 py-5">
+        <div className="shrink-0 border-t border-slate-200 bg-white/80 px-6 py-5 backdrop-blur">
           <div className="flex items-center justify-between text-sm text-slate-600">
             <span>Total</span>
             <span className="font-medium text-slate-900">{totalAmount} USD</span>
@@ -89,7 +89,7 @@ function CartDrawer({ open, cart, products, removingItemId = null, onClose, onRe
           <button
             type="button"
             disabled={items.length === 0}
-            className="mt-4 w-full bg-slate-900 px-4 py-3 text-xs font-medium tracking-[0.2em] text-white uppercase transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-4 w-full rounded-full bg-slate-900 px-4 py-3.5 text-xs font-medium tracking-[0.2em] text-white uppercase transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Checkout
           </button>

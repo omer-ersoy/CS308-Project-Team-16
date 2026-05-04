@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.api_router import api_router
 from app.core.config import settings
+from app.db.seed import init_database, seed_database
+from app.db.session import SessionLocal
 
 
 app = FastAPI(title=settings.app_name)
@@ -14,6 +16,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(api_router, prefix="/api")
+
+
+@app.on_event("startup")
+def startup_event() -> None:
+    init_database()
+    with SessionLocal() as db:
+        seed_database(db)
 
 
 @app.get("/", tags=["root"])
