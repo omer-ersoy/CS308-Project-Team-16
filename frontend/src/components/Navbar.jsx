@@ -21,16 +21,16 @@ function Navbar({
   const pathname = location.pathname;
 
   const navButtonClass = (isActive) =>
-    `sans-ui rounded-full border px-3 py-1.5 tracking-[0.24em] transition ${
+    `sans-ui rounded-full border px-3.5 py-1.5 tracking-[0.2em] transition ${
       isActive
-        ? "border-slate-200 bg-white text-slate-900 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.6)]"
-        : "border-transparent text-slate-500 hover:border-slate-200 hover:bg-white hover:text-slate-800"
+        ? "border-slate-300 bg-slate-900 text-white shadow-[0_16px_36px_-28px_rgba(15,23,42,0.8)]"
+        : "border-transparent text-slate-500 hover:border-slate-200 hover:bg-white/85 hover:text-slate-800"
     }`;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(248,250,252,0.94))] backdrop-blur-xl">
-      <div className="mx-auto max-w-7xl px-6 py-4 sm:px-10 lg:px-14">
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(21rem,28rem)] xl:items-center xl:gap-8">
+    <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(247,250,249,0.78))] backdrop-blur-xl">
+      <div className="mx-auto max-w-7xl px-6 py-3 sm:px-10 lg:px-14">
+        <div className="surface-panel grid gap-4 rounded-[1.9rem] p-4 shadow-[0_20px_45px_-36px_rgba(15,23,42,0.62)] xl:grid-cols-[minmax(0,1fr)_minmax(21rem,28rem)] xl:items-center xl:gap-8 xl:p-5">
           <div className="animate-rise flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <button
@@ -38,27 +38,35 @@ function Navbar({
                 onClick={() => navigate("/")}
                 className="border-0 bg-transparent p-0 text-left transition"
               >
-                <span className="sans-ui block text-[10px] tracking-[0.34em] text-slate-400 uppercase">
+                <span className="sans-ui block text-[10px] tracking-[0.3em] text-slate-400 uppercase">
                   Curated fragrance house
                 </span>
-                <span className="mt-2 block text-lg font-semibold tracking-[0.28em] text-slate-900 uppercase">
+                <span className="mt-2 block text-lg font-semibold tracking-[0.22em] text-slate-900 uppercase sm:text-xl">
                   {brandName}
                 </span>
               </button>
 
               <div className="flex items-center gap-2">
-                <div className="sans-ui rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-[10px] tracking-[0.3em] text-slate-500 uppercase shadow-[0_12px_24px_-22px_rgba(15,23,42,0.6)]">
+                <button
+                  type="button"
+                  onClick={() => navigate("/wishlist")}
+                  className="sans-ui rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-[10px] tracking-[0.24em] text-slate-600 uppercase shadow-[0_12px_24px_-22px_rgba(15,23,42,0.6)] transition hover:border-slate-300 hover:text-slate-900"
+                >
                   Wishlist {wishlistCount}
-                </div>
-                <div className="sans-ui rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-[10px] tracking-[0.3em] text-slate-500 uppercase shadow-[0_12px_24px_-22px_rgba(15,23,42,0.6)]">
+                </button>
+                <button
+                  type="button"
+                  onClick={onCartClick}
+                  className="sans-ui rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-[10px] tracking-[0.24em] text-slate-600 uppercase shadow-[0_12px_24px_-22px_rgba(15,23,42,0.6)] transition hover:border-slate-300 hover:text-slate-900"
+                >
                   Cart {cartCount}
-                </div>
+                </button>
               </div>
             </div>
 
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <nav
-                className="sans-ui flex flex-wrap items-center gap-2 text-[11px] tracking-[0.24em] uppercase"
+                className="sans-ui flex flex-wrap items-center gap-2 text-[11px] tracking-[0.22em] uppercase"
                 aria-label="Primary"
               >
                 <button
@@ -74,6 +82,20 @@ function Navbar({
                   onClick={() => navigate("/wishlist")}
                 >
                   Wishlist
+                </button>
+                <button
+                  type="button"
+                  className={navButtonClass(pathname === "/help")}
+                  onClick={() => navigate("/help")}
+                >
+                  Help
+                </button>
+                <button
+                  type="button"
+                  className={navButtonClass(pathname === "/contact")}
+                  onClick={() => navigate("/contact")}
+                >
+                  Contact
                 </button>
                 <button
                   type="button"
@@ -96,14 +118,14 @@ function Navbar({
               <div className="sans-ui flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] tracking-[0.24em] text-slate-500 uppercase">
                 <button
                   type="button"
-                  className="rounded-full border border-transparent px-3 py-1.5 transition hover:border-slate-200 hover:bg-white hover:text-slate-800"
+                  className="rounded-full border border-transparent px-3 py-1.5 transition hover:border-slate-200 hover:bg-white/80 hover:text-slate-800"
                   onClick={() => openAuth("login")}
                 >
                   {isLoggedIn ? "My account" : "Account"}
                 </button>
                 <button
                   type="button"
-                  className="rounded-full border border-transparent px-3 py-1.5 transition hover:border-slate-200 hover:bg-white hover:text-slate-800"
+                  className="rounded-full border border-transparent px-3 py-1.5 transition hover:border-slate-200 hover:bg-white/80 hover:text-slate-800"
                   onClick={onCartClick}
                 >
                   Open cart
