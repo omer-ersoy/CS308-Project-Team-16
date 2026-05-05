@@ -113,6 +113,15 @@ function Navbar({
                     Admin
                   </button>
                 )}
+                {isLoggedIn && (
+                  <button
+                    type="button"
+                    className={navButtonClass(pathname === "/orders")}
+                    onClick={() => navigate("/orders")}
+                  >
+                    My Orders
+                  </button>
+                )}
               </nav>
 
               <div className="sans-ui flex w-full flex-wrap items-center justify-end gap-x-4 gap-y-2 text-[11px] tracking-[0.24em] text-slate-500 uppercase">

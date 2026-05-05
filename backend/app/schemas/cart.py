@@ -35,6 +35,8 @@ class CheckoutInvoiceItem(BaseModel):
 
 class CheckoutInvoiceRead(BaseModel):
     order_id: str
+    db_order_id: int
+    status: str
     created_at: str
     item_count: int
     total_amount: Decimal
