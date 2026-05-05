@@ -1,13 +1,13 @@
 from decimal import Decimal
+from datetime import UTC, datetime
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.db.models import Cart, CartItem, Product
+from app.db.models import Cart, CartItem, Order, OrderItem, Product
 from app.db.session import get_db
-from app.schemas.cart import CartAddItem, CartItemRead, CartRead
+from app.schemas.cart import CartAddItem, CartItemRead, CartRead, CheckoutInvoiceItem, CheckoutInvoiceRead
 
 
 router = APIRouter()
@@ -87,27 +87,67 @@ def remove_item_from_cart(cart_id: int, item_id: int, db: Session = Depends(get_
     return serialize_cart(get_or_create_cart(db, cart_id))
 
 
-@router.post("/{cart_id}/checkout")
-def checkout_cart(cart_id: int, db: Session = Depends(get_db)) -> dict:
-    cart = get_or_create_cart(db, cart_id)
-    if not cart.items:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cart is empty")
+@router.post("/{cart_id}/checkout", response_model=CheckoutInvoiceRead)
+def checkout_cart(cart_id: int, db: Session = Depends(get_db)) -> CheckoutInvoiceRead:
+    cart = (
+        db.query(Cart)
+        .options(selectinload(Cart.items).selectinload(CartItem.product))
+        .filter(Cart.id == cart_id)
+        .first()
+    )
+    if cart is None or not cart.items:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cart is empty. Add items before checkout.",
+        )
 
     for item in cart.items:
-        product = db.scalar(
-            select(Product).where(Product.id == item.product_id).with_for_update()
-        )
-        if product is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
-        if product.quantity_in_stock < item.quantity:
+        if item.product.quantity_in_stock < item.quantity:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Insufficient stock for {product.name}: only {product.quantity_in_stock} available",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Insufficient stock for product #{item.product_id}.",
             )
-        product.quantity_in_stock -= item.quantity
+
+    for item in cart.items:
+        item.product.quantity_in_stock -= item.quantity
+
+    now = datetime.now(UTC)
+    order_id = f"ORD-{cart_id}-{int(now.timestamp())}"
+    created_at = now.isoformat()
+    invoice_items = [
+        CheckoutInvoiceItem(
+            product_id=item.product_id,
+            quantity=item.quantity,
+            unit_price=item.unit_price,
+            line_total=item.unit_price * item.quantity,
+        )
+        for item in sorted(cart.items, key=lambda cart_item: cart_item.id)
+    ]
+    total_amount = sum((invoice_item.line_total for invoice_item in invoice_items), start=Decimal("0.00"))
+    item_count = sum(invoice_item.quantity for invoice_item in invoice_items)
 
     for item in list(cart.items):
         db.delete(item)
 
+    order = Order(order_ref=order_id, status="processing")
+    db.add(order)
+    db.flush()
+    for invoice_item in invoice_items:
+        db.add(
+            OrderItem(
+                order_id=order.id,
+                product_id=invoice_item.product_id,
+                quantity=invoice_item.quantity,
+                unit_price=invoice_item.unit_price,
+            )
+        )
+
     db.commit()
-    return {"detail": "Order placed successfully"}
+
+    return CheckoutInvoiceRead(
+        order_id=order_id,
+        created_at=created_at,
+        item_count=item_count,
+        total_amount=total_amount,
+        items=invoice_items,
+    )

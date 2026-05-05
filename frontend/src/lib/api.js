@@ -90,9 +90,25 @@ export const api = {
     });
   },
 
-  checkout(cartId) {
+  checkoutCart(cartId) {
     return request(`/carts/${cartId}/checkout`, {
       method: "POST",
+    });
+  },
+
+  getOrder(orderRef) {
+    return request(`/orders/${orderRef}`);
+  },
+
+  listOrders(token) {
+    return request("/orders/", { token });
+  },
+
+  updateOrderStatus(token, orderRef, orderStatus) {
+    return request(`/orders/${orderRef}`, {
+      method: "PATCH",
+      token,
+      body: { status: orderStatus },
     });
   },
 
