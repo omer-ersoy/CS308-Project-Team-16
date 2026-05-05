@@ -132,6 +132,7 @@ def checkout_cart(
     total_amount = sum((invoice_item.line_total for invoice_item in invoice_items), start=Decimal("0.00"))
     item_count = sum(invoice_item.quantity for invoice_item in invoice_items)
 
+stock-decrement-on-purchase
     user_id = current_user.id if current_user is not None else cart.user_id
     order = Order(
         user_id=user_id,

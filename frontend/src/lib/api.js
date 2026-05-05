@@ -92,8 +92,8 @@ export const api = {
 
   checkoutCart(cartId, token) {
     return request(`/carts/${cartId}/checkout`, {
-      method: "POST",
-      token,
+        method: "POST",
+        token,
     });
   },
 
