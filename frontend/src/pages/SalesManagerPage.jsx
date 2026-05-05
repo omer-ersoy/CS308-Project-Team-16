@@ -1,8 +1,11 @@
 import DiscountManager from "../components/DiscountManager";
 import InvoiceTable from "../components/InvoiceTable";
 import SalesAnalytics from "../components/SalesAnalytics";
+import { useAuth } from "../context/AuthContext";
 
 function SalesManagerPage() {
+  const { currentUser } = useAuth();
+
   return (
     <div className="min-h-screen bg-slate-50 px-6 py-10 sm:px-10 lg:px-14">
       <div className="mx-auto max-w-6xl space-y-10">
@@ -18,7 +21,7 @@ function SalesManagerPage() {
           </p>
         </section>
 
-        <DiscountManager />
+        <DiscountManager recipientEmail={currentUser?.email ?? ""} />
         <InvoiceTable />
         <SalesAnalytics />
       </div>
