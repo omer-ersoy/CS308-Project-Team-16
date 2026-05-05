@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import emailjs from "@emailjs/browser";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import CartDrawer from "./components/CartDrawer";
 import PageShell from "./components/PageShell";
@@ -17,6 +18,49 @@ import SalesManagerPage from "./pages/SalesManagerPage";
 
 const CART_ID = 1;
 const WISHLIST_STORAGE_KEY = "wishlist-product-ids";
+
+function buildInvoiceText(invoice, productsByApiId) {
+  const itemLines = invoice.items
+    .map((item) => {
+      const product = productsByApiId.get(item.product_id);
+      const productName = product?.name ?? `Product #${item.product_id}`;
+      return `${productName} x${item.quantity} @ ${item.unit_price} USD = ${item.line_total} USD`;
+    })
+    .join("\n");
+
+  return [
+    "Fragrance Shop Invoice",
+    `Order ID: ${invoice.order_id}`,
+    `Created At: ${invoice.created_at}`,
+    "",
+    "Items:",
+    itemLines,
+    "",
+    `Total Items: ${invoice.item_count}`,
+    `Total Amount: ${invoice.total_amount} USD`,
+  ].join("\n");
+}
+
+function triggerInvoiceDownload(invoice, productsByApiId) {
+  const invoiceText = buildInvoiceText(invoice, productsByApiId);
+  const blob = new Blob([invoiceText], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${invoice.order_id}.txt`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function getErrorMessage(error, fallbackMessage) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+  return fallbackMessage;
+}
 
 function getCartItemCount(cart) {
   return cart?.items?.reduce((total, item) => total + item.quantity, 0) ?? 0;
@@ -148,6 +192,7 @@ function AdminRoute({ searchProps, cartCount, wishlistCount, onCartClick, onCata
 }
 
 function AppContent() {
+  const { currentUser } = useAuth();
   const location = useLocation();
   const [products, setProducts] = useState([]);
   const [catalogReloadKey, setCatalogReloadKey] = useState(0);
@@ -158,6 +203,8 @@ function AppContent() {
   const [removingItemId, setRemovingItemId] = useState(null);
   const [searchValue, setSearchValue] = useState("");
   const [wishlistIds, setWishlistIds] = useState([]);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [checkoutMessage, setCheckoutMessage] = useState("");
 
   useEffect(() => {
     try {
@@ -306,6 +353,60 @@ function AppContent() {
       return [productId, ...current];
     });
   }, []);
+
+  const handleCheckout = useCallback(async () => {
+    if (isCheckingOut) {
+      return;
+    }
+
+    setIsCheckingOut(true);
+    setCheckoutMessage("Creating order...");
+
+    try {
+      const invoice = await api.checkoutCart(CART_ID);
+      setCart((current) => (current ? { ...current, items: [], total_amount: "0.00" } : current));
+
+      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+      const templateId =
+        import.meta.env.VITE_EMAILJS_ORDER_TEMPLATE_ID ?? "template_r04k14b";
+      const productsByApiId = new Map(products.map((product) => [product.apiId, product]));
+      const invoiceText = buildInvoiceText(invoice, productsByApiId);
+
+      triggerInvoiceDownload(invoice, productsByApiId);
+
+      if (!serviceId || !publicKey || !templateId) {
+        setCheckoutMessage(
+          `Order ${invoice.order_id} created. Invoice downloaded. Email skipped because EmailJS config is missing.`,
+        );
+        return;
+      }
+
+      try {
+        await emailjs.send(
+          serviceId,
+          templateId,
+          {
+            reply_to: currentUser?.email ?? "customer@example.com",
+            from_name: currentUser?.full_name ?? "Fragrance Shop Customer",
+            order_id: invoice.order_id,
+            message: invoiceText,
+            total: invoice.total_amount,
+          },
+          { publicKey },
+        );
+        setCheckoutMessage(`Order ${invoice.order_id} created. Invoice downloaded and email sent.`);
+      } catch (emailError) {
+        setCheckoutMessage(
+          `Order ${invoice.order_id} created and invoice downloaded, but email failed: ${getErrorMessage(emailError, "Unknown EmailJS error.")}`,
+        );
+      }
+    } catch (error) {
+      setCheckoutMessage(getErrorMessage(error, "Checkout failed. Please try again."));
+    } finally {
+      setIsCheckingOut(false);
+    }
+  }, [currentUser?.email, currentUser?.full_name, isCheckingOut, products]);
 
   const wishlistProductSet = useMemo(() => new Set(wishlistIds), [wishlistIds]);
 
@@ -456,8 +557,11 @@ function AppContent() {
         cart={cart}
         products={products}
         removingItemId={removingItemId}
+        isCheckingOut={isCheckingOut}
+        checkoutMessage={checkoutMessage}
         onClose={() => setCartOpen(false)}
         onRemoveItem={handleRemoveCartItem}
+        onCheckout={handleCheckout}
       />
     </>
   );
