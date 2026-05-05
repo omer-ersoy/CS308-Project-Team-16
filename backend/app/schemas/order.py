@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
@@ -5,7 +6,8 @@ from pydantic import BaseModel, ConfigDict
 
 class OrderItemRead(BaseModel):
     id: int
-    product_id: int
+    product_id: int | None
+    product_name: str
     quantity: int
     unit_price: Decimal
 
@@ -14,15 +16,16 @@ class OrderItemRead(BaseModel):
 
 class OrderRead(BaseModel):
     id: int
-    order_ref: str
+    user_id: int | None
     status: str
-    created_at: str
-    items: list[OrderItemRead]
     total_amount: Decimal
-    item_count: int
+    created_at: datetime
+    items: list[OrderItemRead]
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class OrderStatusUpdate(BaseModel):
     status: str
+
+    model_config = ConfigDict(extra="forbid")

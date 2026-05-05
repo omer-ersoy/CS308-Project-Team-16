@@ -5,9 +5,10 @@ from sqlalchemy.orm import Session, selectinload
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_admin_user
-from app.db.models import Category, Product, ProductReview, User
+from app.db.models import Category, Order, OrderItem, Product, ProductReview, User
 from app.db.session import get_db
 from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
+from app.schemas.order import OrderRead, OrderStatusUpdate
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.schemas.review import ProductReviewAdminUpdate, ProductReviewRead
 from app.schemas.user import UserRead, UserUpdate
@@ -245,3 +246,46 @@ def delete_admin_review(
     review = get_admin_review(db, review_id)
     db.delete(review)
     db.commit()
+
+
+@router.get("/orders", response_model=list[OrderRead])
+def list_admin_orders(
+    _: UserRead = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+) -> list[Order]:
+    return db.scalars(
+        select(Order)
+        .options(selectinload(Order.items))
+        .order_by(Order.id.desc())
+    ).all()
+
+
+@router.patch("/orders/{order_id}/status", response_model=OrderRead)
+def update_order_status(
+    order_id: int,
+    payload: OrderStatusUpdate,
+    _: UserRead = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+) -> Order:
+    if payload.status not in ("processing", "in-transit", "delivered"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Status must be one of: processing, in-transit, delivered",
+        )
+
+    order = db.scalar(
+        select(Order)
+        .options(selectinload(Order.items))
+        .where(Order.id == order_id)
+    )
+    if order is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+
+    order.status = payload.status
+    db.commit()
+
+    return db.scalar(
+        select(Order)
+        .options(selectinload(Order.items))
+        .where(Order.id == order_id)
+    )

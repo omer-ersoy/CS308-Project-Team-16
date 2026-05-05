@@ -5,9 +5,11 @@ from sqlalchemy.orm import Session, selectinload
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.api.deps import get_optional_current_user
 from app.db.models import Cart, CartItem, Order, OrderItem, Product
 from app.db.session import get_db
 from app.schemas.cart import CartAddItem, CartItemRead, CartRead, CheckoutInvoiceItem, CheckoutInvoiceRead
+from app.schemas.user import UserRead
 
 
 router = APIRouter()
@@ -88,7 +90,11 @@ def remove_item_from_cart(cart_id: int, item_id: int, db: Session = Depends(get_
 
 
 @router.post("/{cart_id}/checkout", response_model=CheckoutInvoiceRead)
-def checkout_cart(cart_id: int, db: Session = Depends(get_db)) -> CheckoutInvoiceRead:
+def checkout_cart(
+    cart_id: int,
+    current_user: UserRead | None = Depends(get_optional_current_user),
+    db: Session = Depends(get_db),
+) -> CheckoutInvoiceRead:
     cart = (
         db.query(Cart)
         .options(selectinload(Cart.items).selectinload(CartItem.product))
@@ -126,26 +132,34 @@ def checkout_cart(cart_id: int, db: Session = Depends(get_db)) -> CheckoutInvoic
     total_amount = sum((invoice_item.line_total for invoice_item in invoice_items), start=Decimal("0.00"))
     item_count = sum(invoice_item.quantity for invoice_item in invoice_items)
 
-    for item in list(cart.items):
-        db.delete(item)
-
-    order = Order(order_ref=order_id, status="processing")
+    user_id = current_user.id if current_user is not None else cart.user_id
+    order = Order(
+        user_id=user_id,
+        status="processing",
+        total_amount=total_amount,
+    )
     db.add(order)
     db.flush()
-    for invoice_item in invoice_items:
+
+    for item in sorted(cart.items, key=lambda cart_item: cart_item.id):
         db.add(
             OrderItem(
                 order_id=order.id,
-                product_id=invoice_item.product_id,
-                quantity=invoice_item.quantity,
-                unit_price=invoice_item.unit_price,
+                product_id=item.product_id,
+                product_name=item.product.name,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
             )
         )
 
+    for item in list(cart.items):
+        db.delete(item)
     db.commit()
 
     return CheckoutInvoiceRead(
         order_id=order_id,
+        db_order_id=order.id,
+        status=order.status,
         created_at=created_at,
         item_count=item_count,
         total_amount=total_amount,

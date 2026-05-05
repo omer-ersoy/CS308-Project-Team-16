@@ -90,25 +90,10 @@ export const api = {
     });
   },
 
-  checkoutCart(cartId) {
+  checkoutCart(cartId, token) {
     return request(`/carts/${cartId}/checkout`, {
       method: "POST",
-    });
-  },
-
-  getOrder(orderRef) {
-    return request(`/orders/${orderRef}`);
-  },
-
-  listOrders(token) {
-    return request("/orders/", { token });
-  },
-
-  updateOrderStatus(token, orderRef, orderStatus) {
-    return request(`/orders/${orderRef}`, {
-      method: "PATCH",
       token,
-      body: { status: orderStatus },
     });
   },
 
@@ -225,6 +210,22 @@ export const api = {
     return request(`/admin/reviews/${reviewId}`, {
       method: "DELETE",
       token,
+    });
+  },
+
+  getMyOrders(token) {
+    return request("/orders/mine", { token });
+  },
+
+  listAdminOrders(token) {
+    return request("/admin/orders", { token });
+  },
+
+  updateAdminOrderStatus(token, orderId, newStatus) {
+    return request(`/admin/orders/${orderId}/status`, {
+      method: "PATCH",
+      token,
+      body: { status: newStatus },
     });
   },
 };

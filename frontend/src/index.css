@@ -1,9 +1,15 @@
 @import "tailwindcss";
 
 :root {
+  --bg-base: #f3f5f4;
+  --bg-radial-a: rgba(255, 252, 244, 0.95);
+  --bg-radial-b: rgba(239, 246, 244, 0.92);
+  --bg-radial-c: rgba(227, 235, 234, 0.94);
+  --surface: rgba(255, 255, 255, 0.86);
+  --surface-border: rgba(148, 163, 184, 0.32);
+  --focus-ring: rgba(15, 23, 42, 0.22);
   color: #1e293b;
-  background:
-    radial-gradient(circle at top, rgba(255, 252, 244, 0.95), rgba(241, 246, 245, 0.96) 48%, #e8efee 100%);
+  background: radial-gradient(circle at top, var(--bg-radial-a), var(--bg-radial-b) 48%, var(--bg-radial-c) 100%);
   font-family:
     "Iowan Old Style",
     "Palatino Linotype",
@@ -24,7 +30,11 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: transparent;
+  background:
+    radial-gradient(circle at 10% -8%, rgba(253, 245, 230, 0.45), transparent 32%),
+    radial-gradient(circle at 100% 0%, rgba(217, 236, 233, 0.5), transparent 38%),
+    linear-gradient(180deg, #f8faf9 0%, var(--bg-base) 100%);
+  background-attachment: fixed;
 }
 
 button,
@@ -40,6 +50,17 @@ select {
 
 ::selection {
   background: rgba(30, 41, 59, 0.16);
+}
+
+.surface-panel {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  backdrop-filter: blur(7px);
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .sans-ui {

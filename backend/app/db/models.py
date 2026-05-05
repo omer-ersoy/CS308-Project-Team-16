@@ -6,7 +6,6 @@ from decimal import Decimal
 from sqlalchemy import DECIMAL, CheckConstraint, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-
 from app.db.base import Base
 
 
@@ -110,17 +109,14 @@ class CartItem(Base):
 class Order(Base):
     __tablename__ = "orders"
     __table_args__ = (
-        CheckConstraint(
-            "status IN ('processing', 'in-transit', 'delivered')",
-            name="ck_orders_status",
-        ),
+        CheckConstraint("status IN ('processing', 'in-transit', 'delivered')", name="ck_orders_status"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    order_ref: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="processing", server_default="processing")
+    total_amount: Mapped[Decimal] = mapped_column(DECIMAL(10, 2))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     items: Mapped[list["OrderItem"]] = relationship(back_populates="order", cascade="all, delete-orphan")
 
@@ -130,9 +126,9 @@ class OrderItem(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"))
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="RESTRICT"))
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
+    product_name: Mapped[str] = mapped_column(String(255))
     quantity: Mapped[int] = mapped_column(Integer)
     unit_price: Mapped[Decimal] = mapped_column(DECIMAL(10, 2))
 
     order: Mapped["Order"] = relationship(back_populates="items")
-    product: Mapped["Product"] = relationship()

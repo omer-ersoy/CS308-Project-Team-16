@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import emailjs from "@emailjs/browser";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -14,8 +14,7 @@ import AdminPage from "./pages/AdminPage";
 import WishlistPage from "./pages/WishlistPage";
 import SalesManagerPage from "./pages/SalesManagerPage";
 import CheckoutPage from "./pages/CheckoutPage";
-import OrderStatusPage from "./pages/OrderStatusPage";
-import DeliveryPage from "./pages/DeliveryPage";
+import OrdersPage from "./pages/OrdersPage";
 import { api } from "./lib/api";
 import { adaptProduct } from "./lib/productAdapter";
 
@@ -218,9 +217,8 @@ function AdminRoute({ searchProps, cartCount, wishlistCount, onCartClick, onCata
 }
 
 function AppContent() {
-  const { currentUser } = useAuth();
+  const { token, currentUser } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [catalogReloadKey, setCatalogReloadKey] = useState(0);
   const [catalogStatus, setCatalogStatus] = useState("loading");
@@ -382,7 +380,7 @@ function AppContent() {
     setCheckoutMessage("Creating order...");
 
     try {
-      const invoice = await api.checkoutCart(CART_ID);
+      const invoice = await api.checkoutCart(CART_ID, token);
       setCart((current) => (current ? { ...current, items: [], total_amount: "0.00" } : current));
 
       const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
@@ -403,9 +401,6 @@ function AppContent() {
       });
 
       triggerInvoiceDownload(invoice, productsByApiId);
-
-      setCartOpen(false);
-      navigate(`/orders/${invoice.order_id}`);
 
       if (!serviceId || !publicKey || !templateId) {
         setCheckoutMessage(
@@ -445,7 +440,7 @@ function AppContent() {
     } finally {
       setIsCheckingOut(false);
     }
-  }, [currentUser?.email, currentUser?.full_name, isCheckingOut, navigate, products]);
+  }, [currentUser?.email, currentUser?.full_name, isCheckingOut, products, token]);
 
   const wishlistProductSet = useMemo(() => new Set(wishlistIds), [wishlistIds]);
 
@@ -550,6 +545,17 @@ function AppContent() {
             }
           />
           <Route
+            path="/orders"
+            element={
+              <OrdersPage
+                searchProps={searchProps}
+                cartCount={cartCount}
+                wishlistCount={wishlistCount}
+                onCartClick={() => setCartOpen(true)}
+              />
+            }
+          />
+          <Route
             path="/wishlist"
             element={
               <WishlistPage
@@ -594,18 +600,6 @@ function AppContent() {
             }
           />
           <Route path="/sales-manager" element={<SalesManagerPage />} />
-          <Route
-            path="/orders/:orderRef"
-            element={
-              <OrderStatusPage
-                searchProps={searchProps}
-                cartCount={cartCount}
-                wishlistCount={wishlistCount}
-                onCartClick={() => setCartOpen(true)}
-              />
-            }
-          />
-          <Route path="/delivery" element={<DeliveryPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       )}

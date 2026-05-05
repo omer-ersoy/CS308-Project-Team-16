@@ -8,6 +8,7 @@ const adminTabs = [
   { id: "categories", label: "Categories" },
   { id: "reviews", label: "Reviews" },
   { id: "users", label: "Users" },
+  { id: "orders", label: "Orders" },
 ];
 
 const reviewRatings = [1, 2, 3, 4, 5];
@@ -23,6 +24,20 @@ const reviewStatusClasses = {
   pending: "border-amber-200 bg-amber-50 text-amber-700",
   approved: "border-emerald-200 bg-emerald-50 text-emerald-700",
   rejected: "border-red-200 bg-red-50 text-red-700",
+};
+
+const orderStatuses = [
+  { value: "processing", label: "Processing" },
+  { value: "in-transit", label: "In Transit" },
+  { value: "delivered", label: "Delivered" },
+];
+const orderStatusLabels = Object.fromEntries(
+  orderStatuses.map((s) => [s.value, s.label]),
+);
+const orderStatusClasses = {
+  processing: "border-amber-200 bg-amber-50 text-amber-700",
+  "in-transit": "border-sky-200 bg-sky-50 text-sky-700",
+  delivered: "border-emerald-200 bg-emerald-50 text-emerald-700",
 };
 
 const emptyProductForm = {
@@ -216,6 +231,7 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
   const [categories, setCategories] = useState([]);
   const [users, setUsers] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [adminOrders, setAdminOrders] = useState([]);
   const [userDrafts, setUserDrafts] = useState({});
   const [reviewDrafts, setReviewDrafts] = useState({});
   const [loading, setLoading] = useState(true);
@@ -245,16 +261,18 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
     setError("");
 
     try {
-      const [nextProducts, nextCategories, nextUsers, nextReviews] = await Promise.all([
+      const [nextProducts, nextCategories, nextUsers, nextReviews, nextOrders] = await Promise.all([
         api.listAdminProducts(token),
         api.listAdminCategories(token),
         api.listAdminUsers(token),
         api.listAdminReviews(token),
+        api.listAdminOrders(token),
       ]);
       setProducts(nextProducts);
       setCategories(nextCategories);
       setUsers(nextUsers);
       setReviews(nextReviews);
+      setAdminOrders(nextOrders);
     } catch (loadError) {
       setError(loadError.message);
     } finally {
@@ -521,6 +539,22 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
       await loadAdminData();
     } catch (deleteError) {
       setError(deleteError.message);
+    } finally {
+      setSavingKey("");
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    setError("");
+    setNotice("");
+    setSavingKey(`order-status-${orderId}-${newStatus}`);
+
+    try {
+      await api.updateAdminOrderStatus(token, orderId, newStatus);
+      setNotice(`Order #${orderId} status updated to ${orderStatusLabels[newStatus] ?? newStatus}.`);
+      await loadAdminData();
+    } catch (updateError) {
+      setError(updateError.message);
     } finally {
       setSavingKey("");
     }
@@ -831,7 +865,7 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
                 )}
               </div>
             </section>
-          ) : (
+          ) : activeTab === "users" ? (
             <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-[11px] tracking-[0.28em] text-slate-500 uppercase">User management</p>
               <div className="mt-6 space-y-4">
@@ -881,6 +915,76 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
                     </article>
                   );
                 })}
+              </div>
+            </section>
+          ) : (
+            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-[11px] tracking-[0.28em] text-slate-500 uppercase">Delivery management</p>
+              <div className="mt-6 space-y-4">
+                {adminOrders.length === 0 ? (
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
+                    No orders yet.
+                  </div>
+                ) : (
+                  adminOrders.map((order) => (
+                    <article key={order.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <h3 className="text-xl font-medium text-slate-800">Order #{order.id}</h3>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {order.user_id ? `User #${order.user_id}` : "Guest"} &middot;{" "}
+                            {new Date(order.created_at).toLocaleDateString(undefined, {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </p>
+                          <span
+                            className={`mt-3 inline-flex border px-3 py-1 text-[11px] tracking-[0.18em] uppercase ${
+                              orderStatusClasses[order.status] ?? "border-slate-200 bg-white text-slate-600"
+                            }`}
+                          >
+                            {orderStatusLabels[order.status] ?? order.status}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-slate-800">
+                            {Number(order.total_amount).toFixed(2)} USD
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {order.items.reduce((sum, item) => sum + item.quantity, 0)} item(s)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 space-y-1 border-t border-slate-200 pt-4">
+                        {order.items.map((item) => (
+                          <p key={item.id} className="text-sm text-slate-600">
+                            {item.product_name} &times; {item.quantity} &mdash; {Number(item.unit_price).toFixed(2)} USD each
+                          </p>
+                        ))}
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {orderStatuses.map((s) => (
+                          <button
+                            key={s.value}
+                            type="button"
+                            disabled={order.status === s.value || savingKey === `order-status-${order.id}-${s.value}`}
+                            onClick={() => handleUpdateOrderStatus(order.id, s.value)}
+                            className={`px-4 py-2 text-xs tracking-[0.18em] uppercase disabled:cursor-not-allowed disabled:opacity-50 ${
+                              order.status === s.value
+                                ? "bg-slate-200 text-slate-500"
+                                : "bg-slate-900 text-white hover:bg-slate-700"
+                            }`}
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                    </article>
+                  ))
+                )}
               </div>
             </section>
           )}

@@ -86,9 +86,12 @@ function HomePage({
                 <p className="text-[11px] tracking-[0.28em] text-slate-500 uppercase">
                   Featured products
                 </p>
-                <h2 className="mt-2 text-2xl font-light tracking-tight text-slate-700">
+                <h2 className="mt-2 text-3xl font-light tracking-tight text-slate-700">
                   Our Selection
                 </h2>
+                <p className="sans-ui mt-3 inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] tracking-[0.22em] text-slate-500 uppercase">
+                  {products.length} items in catalog
+                </p>
               </div>
 
               <SortControls sortOption={sortOption} onSortChange={onSortChange} />
@@ -97,7 +100,7 @@ function HomePage({
 
           <section className="flex min-h-[40vh] flex-1 flex-col" aria-label="Products">
             {hasProducts ? (
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 xl:gap-7">
                 {products.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -108,7 +111,7 @@ function HomePage({
                 ))}
               </div>
             ) : (
-              <div className="mx-auto w-full max-w-xl border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
+              <div className="mx-auto w-full max-w-xl rounded-[1.6rem] border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
                 <p className="text-[11px] tracking-[0.28em] text-slate-500 uppercase">
                   Product catalog
                 </p>
