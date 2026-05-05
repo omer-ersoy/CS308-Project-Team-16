@@ -21,10 +21,10 @@ function Navbar({
   const pathname = location.pathname;
 
   const navButtonClass = (isActive) =>
-    `sans-ui rounded-full border px-3.5 py-1.5 tracking-[0.2em] transition ${
+    `sans-ui rounded-full border px-4 py-2 text-[12px] tracking-[0.18em] transition ${
       isActive
         ? "border-slate-300 bg-slate-900 text-white shadow-[0_16px_36px_-28px_rgba(15,23,42,0.8)]"
-        : "border-transparent text-slate-500 hover:border-slate-200 hover:bg-white/85 hover:text-slate-800"
+        : "border-slate-200/70 bg-white/80 text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-900"
     }`;
 
   return (
@@ -64,9 +64,9 @@ function Navbar({
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-3">
               <nav
-                className="sans-ui flex flex-wrap items-center gap-2 text-[11px] tracking-[0.22em] uppercase"
+                className="sans-ui flex flex-wrap items-center gap-2.5 text-[12px] tracking-[0.18em] uppercase"
                 aria-label="Primary"
               >
                 <button
@@ -115,7 +115,7 @@ function Navbar({
                 )}
               </nav>
 
-              <div className="sans-ui flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] tracking-[0.24em] text-slate-500 uppercase">
+              <div className="sans-ui flex w-full flex-wrap items-center justify-end gap-x-4 gap-y-2 text-[11px] tracking-[0.24em] text-slate-500 uppercase">
                 <button
                   type="button"
                   className="rounded-full border border-transparent px-3 py-1.5 transition hover:border-slate-200 hover:bg-white/80 hover:text-slate-800"
