@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -84,3 +85,29 @@ def remove_item_from_cart(cart_id: int, item_id: int, db: Session = Depends(get_
         db.delete(item)
         db.commit()
     return serialize_cart(get_or_create_cart(db, cart_id))
+
+
+@router.post("/{cart_id}/checkout")
+def checkout_cart(cart_id: int, db: Session = Depends(get_db)) -> dict:
+    cart = get_or_create_cart(db, cart_id)
+    if not cart.items:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cart is empty")
+
+    for item in cart.items:
+        product = db.scalar(
+            select(Product).where(Product.id == item.product_id).with_for_update()
+        )
+        if product is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+        if product.quantity_in_stock < item.quantity:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Insufficient stock for {product.name}: only {product.quantity_in_stock} available",
+            )
+        product.quantity_in_stock -= item.quantity
+
+    for item in list(cart.items):
+        db.delete(item)
+
+    db.commit()
+    return {"detail": "Order placed successfully"}

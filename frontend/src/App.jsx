@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import CartDrawer from "./components/CartDrawer";
@@ -300,6 +300,18 @@ function AppContent() {
     });
   }, []);
 
+  const navigate = useNavigate();
+
+  const handleCheckout = useCallback(() => {
+    setCartOpen(false);
+    navigate("/checkout");
+  }, [navigate]);
+
+  const handleCheckoutComplete = useCallback(() => {
+    setCart(null);
+    setCatalogReloadKey((current) => current + 1);
+  }, []);
+
   const wishlistProductSet = useMemo(() => new Set(wishlistIds), [wishlistIds]);
 
   const isWishlisted = useCallback(
@@ -399,6 +411,10 @@ function AppContent() {
                 cartCount={cartCount}
                 wishlistCount={wishlistCount}
                 onCartClick={() => setCartOpen(true)}
+                cart={cart}
+                cartId={CART_ID}
+                products={products}
+                onCheckoutComplete={handleCheckoutComplete}
               />
             }
           />
@@ -458,6 +474,7 @@ function AppContent() {
         removingItemId={removingItemId}
         onClose={() => setCartOpen(false)}
         onRemoveItem={handleRemoveCartItem}
+        onCheckout={handleCheckout}
       />
     </>
   );

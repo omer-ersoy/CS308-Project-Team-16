@@ -90,6 +90,12 @@ export const api = {
     });
   },
 
+  checkout(cartId) {
+    return request(`/carts/${cartId}/checkout`, {
+      method: "POST",
+    });
+  },
+
   login(email, password) {
     return request("/auth/login", {
       method: "POST",
