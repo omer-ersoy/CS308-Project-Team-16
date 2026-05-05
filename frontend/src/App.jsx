@@ -11,9 +11,10 @@ import ContactPage from "./pages/ContactPage";
 import CollectionsPage from "./pages/CollectionsPage";
 import AdminPage from "./pages/AdminPage";
 import WishlistPage from "./pages/WishlistPage";
+import SalesManagerPage from "./pages/SalesManagerPage";
+import CheckoutPage from "./pages/CheckoutPage";
 import { api } from "./lib/api";
 import { adaptProduct } from "./lib/productAdapter";
-import SalesManagerPage from "./pages/SalesManagerPage";
 
 const CART_ID = 1;
 const WISHLIST_STORAGE_KEY = "wishlist-product-ids";
@@ -67,13 +68,13 @@ function ProductRoute({
 
   if (isLoading) {
     return (
-        <StateLayout
-          searchProps={searchProps}
-          cartCount={cartCount}
-          wishlistCount={wishlistCount}
-          onCartClick={onCartClick}
-          eyebrow="Product catalog"
-          title="Loading product."
+      <StateLayout
+        searchProps={searchProps}
+        cartCount={cartCount}
+        wishlistCount={wishlistCount}
+        onCartClick={onCartClick}
+        eyebrow="Product catalog"
+        title="Loading product."
         description="Product information is being loaded from the API."
       />
     );
@@ -81,13 +82,13 @@ function ProductRoute({
 
   if (!product) {
     return (
-        <StateLayout
-          searchProps={searchProps}
-          cartCount={cartCount}
-          wishlistCount={wishlistCount}
-          onCartClick={onCartClick}
-          eyebrow="Product catalog"
-          title="Product not found."
+      <StateLayout
+        searchProps={searchProps}
+        cartCount={cartCount}
+        wishlistCount={wishlistCount}
+        onCartClick={onCartClick}
+        eyebrow="Product catalog"
+        title="Product not found."
         description="This product is not available in the current catalog."
       />
     );
@@ -162,9 +163,7 @@ function AppContent() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(WISHLIST_STORAGE_KEY);
-      if (!raw) {
-        return;
-      }
+      if (!raw) return;
 
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
@@ -189,9 +188,7 @@ function AppContent() {
           api.getCart(CART_ID),
         ]);
 
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
 
         const categoriesById = new Map(apiCategories.map((category) => [category.id, category]));
         setProducts(
@@ -202,10 +199,7 @@ function AppContent() {
         setCart(initialCart);
         setCatalogStatus("success");
       } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
+        if (!isMounted) return;
         setCatalogError(error.message);
         setCatalogStatus("error");
       }
@@ -231,10 +225,9 @@ function AppContent() {
   }, [products]);
 
   const normalizedSearch = searchValue.trim().toLowerCase();
+
   const filteredProducts = useMemo(() => {
-    if (!normalizedSearch) {
-      return products;
-    }
+    if (!normalizedSearch) return products;
 
     return products.filter((product) => {
       const searchableContent = [
@@ -242,11 +235,11 @@ function AppContent() {
         product.volume,
         product.shortDescription,
         product.details,
-        ...product.features,
+        ...(product.features ?? []),
       ];
 
       return searchableContent.some((field) =>
-        field.toLowerCase().includes(normalizedSearch),
+        String(field).toLowerCase().includes(normalizedSearch),
       );
     });
   }, [normalizedSearch, products]);
@@ -269,6 +262,7 @@ function AppContent() {
   const cartCount = getCartItemCount(cart);
   const wishlistCount = wishlistIds.length;
   const isAdminRoute = location.pathname.startsWith("/admin");
+
   const showSearchEmpty =
     !isAdminRoute &&
     !isCatalogLoading &&
@@ -288,7 +282,6 @@ function AppContent() {
 
   const handleRemoveCartItem = useCallback(async (itemId) => {
     setRemovingItemId(itemId);
-
     try {
       const updatedCart = await api.removeCartItem(CART_ID, itemId);
       setCart(updatedCart);
@@ -320,9 +313,7 @@ function AppContent() {
   }, [products, wishlistIds]);
 
   const filteredWishlistProducts = useMemo(() => {
-    if (!normalizedSearch) {
-      return wishlistProducts;
-    }
+    if (!normalizedSearch) return wishlistProducts;
 
     const filteredIds = new Set(filteredProducts.map((product) => product.id));
     return wishlistProducts.filter((product) => filteredIds.has(product.id));
@@ -401,6 +392,17 @@ function AppContent() {
             }
           />
           <Route
+            path="/checkout"
+            element={
+              <CheckoutPage
+                searchProps={searchProps}
+                cartCount={cartCount}
+                wishlistCount={wishlistCount}
+                onCartClick={() => setCartOpen(true)}
+              />
+            }
+          />
+          <Route
             path="/wishlist"
             element={
               <WishlistPage
@@ -444,13 +446,11 @@ function AppContent() {
               />
             }
           />
-          <Route
-            path="/sales-manager"
-            element={<SalesManagerPage />}
-          />
+          <Route path="/sales-manager" element={<SalesManagerPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       )}
+
       <CartDrawer
         open={cartOpen}
         cart={cart}
