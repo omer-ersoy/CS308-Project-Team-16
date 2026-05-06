@@ -230,6 +230,7 @@ function AppContent() {
   const [wishlistIds, setWishlistIds] = useState([]);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState("");
+  const [sortOption, setSortOption] = useState("default");
 
   useEffect(() => {
     try {
@@ -454,6 +455,15 @@ function AppContent() {
     return wishlistIds.map((id) => byId.get(id)).filter(Boolean);
   }, [products, wishlistIds]);
 
+  const sortedFilteredProducts = useMemo(() => {
+    const sorted = [...filteredProducts];
+    if (sortOption === "price-asc") sorted.sort((a, b) => a.price - b.price);
+    else if (sortOption === "price-desc") sorted.sort((a, b) => b.price - a.price);
+    // Lower remaining stock indicates higher sales volume, used as a popularity proxy.
+    else if (sortOption === "popularity") sorted.sort((a, b) => a.stock - b.stock);
+    return sorted;
+  }, [filteredProducts, sortOption]);
+
   const filteredWishlistProducts = useMemo(() => {
     if (!normalizedSearch) return wishlistProducts;
 
@@ -478,7 +488,7 @@ function AppContent() {
             element={
               <HomePage
                 searchProps={searchProps}
-                products={filteredProducts}
+                products={sortedFilteredProducts}
                 isLoading={isCatalogLoading}
                 error={catalogError}
                 cartCount={cartCount}
@@ -486,6 +496,8 @@ function AppContent() {
                 onCartClick={() => setCartOpen(true)}
                 onToggleWishlist={handleToggleWishlist}
                 isWishlisted={isWishlisted}
+                sortOption={sortOption}
+                onSortChange={setSortOption}
               />
             }
           />
