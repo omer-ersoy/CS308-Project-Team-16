@@ -21,74 +21,30 @@ import { adaptProduct } from "./lib/productAdapter";
 const CART_ID = 1;
 const WISHLIST_STORAGE_KEY = "wishlist-product-ids";
 
+function getCartItemCount(cart) {
+  return cart?.items?.reduce((total, item) => total + item.quantity, 0) ?? 0;
+}
+
 function buildInvoiceText(invoice, productsByApiId) {
   const itemLines = invoice.items
     .map((item) => {
       const product = productsByApiId.get(item.product_id);
       const productName = product?.name ?? `Product #${item.product_id}`;
-      return `${productName} x${item.quantity} @ ${item.unit_price} USD = ${item.line_total} USD`;
+      return `- ${productName} | Qty: ${item.quantity} | Unit: ${item.unit_price} USD | Line Total: ${item.line_total} USD`;
     })
     .join("\n");
 
   return [
-    "Fragrance Shop Invoice",
     `Order ID: ${invoice.order_id}`,
+    `Database Order ID: ${invoice.db_order_id}`,
+    `Status: ${invoice.status}`,
     `Created At: ${invoice.created_at}`,
+    `Item Count: ${invoice.item_count}`,
+    `Total Amount: ${invoice.total_amount} USD`,
     "",
     "Items:",
     itemLines,
-    "",
-    `Total Items: ${invoice.item_count}`,
-    `Total Amount: ${invoice.total_amount} USD`,
   ].join("\n");
-}
-
-function triggerInvoiceDownload(invoice, productsByApiId) {
-  const invoiceText = buildInvoiceText(invoice, productsByApiId);
-  const blob = new Blob([invoiceText], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${invoice.order_id}.txt`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function getErrorMessage(error, fallbackMessage) {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  if (error && typeof error === "object") {
-    const emailJsText = typeof error.text === "string" ? error.text : "";
-    const emailJsStatus =
-      typeof error.status === "number" || typeof error.status === "string"
-        ? String(error.status)
-        : "";
-
-    if (emailJsStatus && emailJsText) {
-      return `${emailJsStatus}: ${emailJsText}`;
-    }
-    if (emailJsText) {
-      return emailJsText;
-    }
-
-    try {
-      const serialized = JSON.stringify(error);
-      if (serialized && serialized !== "{}") {
-        return serialized;
-      }
-    } catch {
-      // Ignore serialization failures and fall through to fallback.
-    }
-  }
-  if (typeof error === "string" && error.trim()) {
-    return error;
-  }
-  return fallbackMessage;
-}
-
-function getCartItemCount(cart) {
-  return cart?.items?.reduce((total, item) => total + item.quantity, 0) ?? 0;
 }
 
 function StateLayout({
@@ -111,9 +67,7 @@ function StateLayout({
         <div className="max-w-xl border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
           <p className="text-[11px] tracking-[0.28em] text-slate-500 uppercase">{eyebrow}</p>
           <h1 className="mt-4 text-3xl font-light tracking-tight text-slate-700">{title}</h1>
-          {description && (
-            <p className="mt-4 text-sm leading-7 text-slate-600">{description}</p>
-          )}
+          {description && <p className="mt-4 text-sm leading-7 text-slate-600">{description}</p>}
         </div>
       </main>
     </PageShell>
@@ -189,8 +143,7 @@ function SearchEmptyLayout({ searchProps, searchValue, cartCount, wishlistCount,
           <p className="text-[11px] tracking-[0.28em] text-slate-500 uppercase">Search results</p>
           <h1 className="mt-4 text-3xl font-light tracking-tight text-slate-700">No products found.</h1>
           <p className="mt-4 text-sm leading-7 text-slate-600">
-            No matches for &quot;{searchValue.trim()}&quot;. Try a different product name, feature, or
-            description.
+            No matches for &quot;{searchValue.trim()}&quot;. Try a different product name, feature, or description.
           </p>
         </div>
       </main>
@@ -239,7 +192,6 @@ function AppContent() {
     try {
       const raw = localStorage.getItem(WISHLIST_STORAGE_KEY);
       if (!raw) return;
-
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
         setWishlistIds(parsed.map((id) => String(id)));
@@ -313,22 +265,40 @@ function AppContent() {
   const normalizedSearch = searchValue.trim().toLowerCase();
 
   const filteredProducts = useMemo(() => {
-    if (!normalizedSearch) return products;
+    let visibleProducts = products;
 
-    return products.filter((product) => {
-      const searchableContent = [
-        product.name,
-        product.volume,
-        product.shortDescription,
-        product.details,
-        ...(product.features ?? []),
-      ];
+    if (normalizedSearch) {
+      visibleProducts = visibleProducts.filter((product) => {
+        const searchableContent = [
+          product.name,
+          product.volume,
+          product.shortDescription,
+          product.details,
+          ...(product.features ?? []),
+        ];
 
-      return searchableContent.some((field) =>
-        String(field).toLowerCase().includes(normalizedSearch),
+        return searchableContent.some((field) =>
+          String(field).toLowerCase().includes(normalizedSearch),
+        );
+      });
+    }
+
+    if (sortOption === "price-asc") {
+      return [...visibleProducts].sort((a, b) => Number(a.price) - Number(b.price));
+    }
+
+    if (sortOption === "price-desc") {
+      return [...visibleProducts].sort((a, b) => Number(b.price) - Number(a.price));
+    }
+
+    if (sortOption === "popularity") {
+      return [...visibleProducts].sort(
+        (a, b) => Number(b.popularity ?? 0) - Number(a.popularity ?? 0),
       );
-    });
-  }, [normalizedSearch, products]);
+    }
+
+    return visibleProducts;
+  }, [normalizedSearch, products, sortOption]);
 
   const searchStatus = normalizedSearch
     ? filteredProducts.length > 0
@@ -398,82 +368,6 @@ function AppContent() {
     });
   }, []);
 
-  const handleCheckout = useCallback(async () => {
-    if (isCheckingOut) {
-      return;
-    }
-    if (!token) {
-      setCheckoutMessage("Please log in before checking out.");
-      openAuth("login");
-      return;
-    }
-
-    setIsCheckingOut(true);
-    setCheckoutMessage("Creating order...");
-
-    try {
-      const invoice = await api.checkoutCart(CART_ID, token);
-      setCart((current) => (current ? { ...current, items: [], total_amount: "0.00" } : current));
-
-      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
-      const templateId = import.meta.env.VITE_EMAILJS_ORDER_TEMPLATE_ID ?? "template_xtkn2jc";
-      const productsByApiId = new Map(products.map((product) => [product.apiId, product]));
-      const invoiceText = buildInvoiceText(invoice, productsByApiId);
-      const orderItems = invoice.items.map((item) => {
-        const product = productsByApiId.get(item.product_id);
-        const itemName = product?.name ?? `Product #${item.product_id}`;
-
-        return {
-          name: itemName,
-          units: item.quantity,
-          price: item.unit_price,
-          item_total: item.line_total,
-        };
-      });
-
-      triggerInvoiceDownload(invoice, productsByApiId);
-
-      if (!serviceId || !publicKey || !templateId) {
-        setCheckoutMessage(
-          `Order ${invoice.order_id} created. Invoice downloaded. Email skipped because EmailJS config is missing.`,
-        );
-        return;
-      }
-
-      try {
-        const recipientEmail = currentUser?.email ?? "customer@example.com";
-        await emailjs.send(
-          serviceId,
-          templateId,
-          {
-            to_email: recipientEmail,
-            reply: recipientEmail,
-            reply_to: recipientEmail,
-            from_name: currentUser?.full_name ?? "Fragrance Shop Customer",
-            order_id: invoice.order_id,
-            message: invoiceText,
-            total: invoice.total_amount,
-            orders: orderItems,
-            item_names: orderItems.map((item) => item.name).join(", "),
-            item_prices: orderItems.map((item) => String(item.price)).join(", "),
-          },
-          { publicKey },
-        );
-        setCheckoutMessage(`Order ${invoice.order_id} created. Invoice downloaded and email sent.`);
-      } catch (emailError) {
-        console.error("Order email failed", emailError);
-        setCheckoutMessage(
-          `Order ${invoice.order_id} created and invoice downloaded, but email failed: ${getErrorMessage(emailError, "Unknown EmailJS error.")}`,
-        );
-      }
-    } catch (error) {
-      setCheckoutMessage(getErrorMessage(error, "Checkout failed. Please try again."));
-    } finally {
-      setIsCheckingOut(false);
-    }
-  }, [currentUser?.email, currentUser?.full_name, isCheckingOut, openAuth, products, token]);
-
   const wishlistProductSet = useMemo(() => new Set(wishlistIds), [wishlistIds]);
 
   const isWishlisted = useCallback(
@@ -486,21 +380,69 @@ function AppContent() {
     return wishlistIds.map((id) => byId.get(id)).filter(Boolean);
   }, [products, wishlistIds]);
 
-  const sortedFilteredProducts = useMemo(() => {
-    const sorted = [...filteredProducts];
-    if (sortOption === "price-asc") sorted.sort((a, b) => a.price - b.price);
-    else if (sortOption === "price-desc") sorted.sort((a, b) => b.price - a.price);
-    // Lower remaining stock indicates higher sales volume, used as a popularity proxy.
-    else if (sortOption === "popularity") sorted.sort((a, b) => a.stock - b.stock);
-    return sorted;
-  }, [filteredProducts, sortOption]);
-
   const filteredWishlistProducts = useMemo(() => {
     if (!normalizedSearch) return wishlistProducts;
-
     const filteredIds = new Set(filteredProducts.map((product) => product.id));
     return wishlistProducts.filter((product) => filteredIds.has(product.id));
   }, [filteredProducts, normalizedSearch, wishlistProducts]);
+
+  const productsByApiId = useMemo(
+    () => new Map(products.map((product) => [product.apiId, product])),
+    [products],
+  );
+
+  const sendInvoiceEmail = useCallback(
+    async (invoice) => {
+      if (!currentUser?.email) return;
+
+      const templateParams = {
+        to_email: currentUser.email,
+        user_name: currentUser.full_name ?? currentUser.name ?? "Customer",
+        order_id: invoice.order_id,
+        total_amount: `${invoice.total_amount} USD`,
+        invoice_text: buildInvoiceText(invoice, productsByApiId),
+      };
+
+      try {
+        const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+        const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+        const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+        if (!serviceId || !templateId || !publicKey) {
+          return;
+        }
+
+        await emailjs.send(serviceId, templateId, templateParams, publicKey);
+      } catch {
+        // ignore email errors for now
+      }
+    },
+    [currentUser, productsByApiId],
+  );
+
+  const handleCheckout = useCallback(async () => {
+    if (!token) {
+      openAuth("login");
+      throw new Error("Login required before checkout.");
+    }
+
+    setIsCheckingOut(true);
+    setCheckoutMessage("");
+
+    try {
+      const invoice = await api.checkoutCart(CART_ID, token);
+      setCart(await api.getCart(CART_ID));
+      setCatalogReloadKey((current) => current + 1);
+      setCheckoutMessage(`Checkout completed. Order ${invoice.order_id} created.`);
+      await sendInvoiceEmail(invoice);
+      return invoice;
+    } catch (error) {
+      setCheckoutMessage(error.message);
+      throw error;
+    } finally {
+      setIsCheckingOut(false);
+    }
+  }, [token, openAuth, sendInvoiceEmail]);
 
   return (
     <>
@@ -534,6 +476,7 @@ function AppContent() {
                 sortOption={sortOption}
                 onSortChange={setSortOption}
               />
+
             }
           />
           <Route
@@ -588,17 +531,9 @@ function AppContent() {
                 cartCount={cartCount}
                 wishlistCount={wishlistCount}
                 onCartClick={() => setCartOpen(true)}
-              />
-            }
-          />
-          <Route
-            path="/orders"
-            element={
-              <OrdersPage
-                searchProps={searchProps}
-                cartCount={cartCount}
-                wishlistCount={wishlistCount}
-                onCartClick={() => setCartOpen(true)}
+                onCheckout={handleCheckout}
+                isCheckingOut={isCheckingOut}
+                checkoutMessage={checkoutMessage}
               />
             }
           />
@@ -615,6 +550,17 @@ function AppContent() {
                 onCartClick={() => setCartOpen(true)}
                 onToggleWishlist={handleToggleWishlist}
                 isWishlisted={isWishlisted}
+              />
+            }
+          />
+          <Route
+            path="/orders"
+            element={
+              <OrdersPage
+                searchProps={searchProps}
+                cartCount={cartCount}
+                wishlistCount={wishlistCount}
+                onCartClick={() => setCartOpen(true)}
               />
             }
           />
@@ -656,11 +602,8 @@ function AppContent() {
         cart={cart}
         products={products}
         removingItemId={removingItemId}
-        isCheckingOut={isCheckingOut}
-        checkoutMessage={checkoutMessage}
         onClose={() => setCartOpen(false)}
         onRemoveItem={handleRemoveCartItem}
-        onCheckout={handleCheckout}
       />
     </>
   );
