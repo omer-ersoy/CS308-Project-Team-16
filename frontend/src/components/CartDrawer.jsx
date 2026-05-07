@@ -1,6 +1,20 @@
+<<<<<<< HEAD
 import { useNavigate } from "react-router-dom";
 
 function CartDrawer({ open, cart, products, removingItemId = null, onClose, onRemoveItem }) {
+=======
+function CartDrawer({
+  open,
+  cart,
+  products,
+  removingItemId = null,
+  isCheckingOut = false,
+  checkoutMessage = "",
+  onClose,
+  onRemoveItem,
+  onCheckout,
+}) {
+>>>>>>> b06c11c3336284023ace6e3d77ef46ba5cae4b7a
   const productsByApiId = new Map(products.map((product) => [product.apiId, product]));
   const items = cart?.items ?? [];
   const totalAmount = Number(cart?.total_amount ?? 0);
@@ -90,15 +104,23 @@ function CartDrawer({ open, cart, products, removingItemId = null, onClose, onRe
 
           <button
             type="button"
+<<<<<<< HEAD
             disabled={items.length === 0}
             onClick={() => {
               onClose?.();
               navigate("/checkout");
             }}
+=======
+            disabled={items.length === 0 || isCheckingOut}
+            onClick={onCheckout}
+>>>>>>> b06c11c3336284023ace6e3d77ef46ba5cae4b7a
             className="mt-4 w-full rounded-full bg-slate-900 px-4 py-3.5 text-xs font-medium tracking-[0.2em] text-white uppercase transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Checkout
+            {isCheckingOut ? "Processing..." : "Checkout"}
           </button>
+          {checkoutMessage ? (
+            <p className="mt-3 text-sm text-slate-600">{checkoutMessage}</p>
+          ) : null}
         </div>
       </aside>
     </>

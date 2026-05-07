@@ -11,10 +11,11 @@ import ContactPage from "./pages/ContactPage";
 import CollectionsPage from "./pages/CollectionsPage";
 import AdminPage from "./pages/AdminPage";
 import WishlistPage from "./pages/WishlistPage";
-import { api } from "./lib/api";
-import { adaptProduct } from "./lib/productAdapter";
 import SalesManagerPage from "./pages/SalesManagerPage";
 import CheckoutPage from "./pages/CheckoutPage";
+import OrdersPage from "./pages/OrdersPage";
+import { api } from "./lib/api";
+import { adaptProduct } from "./lib/productAdapter";
 
 const CART_ID = 1;
 const WISHLIST_STORAGE_KEY = "wishlist-product-ids";
@@ -43,9 +44,7 @@ function StateLayout({
         <div className="max-w-xl border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
           <p className="text-[11px] tracking-[0.28em] text-slate-500 uppercase">{eyebrow}</p>
           <h1 className="mt-4 text-3xl font-light tracking-tight text-slate-700">{title}</h1>
-          {description && (
-            <p className="mt-4 text-sm leading-7 text-slate-600">{description}</p>
-          )}
+          {description && <p className="mt-4 text-sm leading-7 text-slate-600">{description}</p>}
         </div>
       </main>
     </PageShell>
@@ -68,13 +67,13 @@ function ProductRoute({
 
   if (isLoading) {
     return (
-        <StateLayout
-          searchProps={searchProps}
-          cartCount={cartCount}
-          wishlistCount={wishlistCount}
-          onCartClick={onCartClick}
-          eyebrow="Product catalog"
-          title="Loading product."
+      <StateLayout
+        searchProps={searchProps}
+        cartCount={cartCount}
+        wishlistCount={wishlistCount}
+        onCartClick={onCartClick}
+        eyebrow="Product catalog"
+        title="Loading product."
         description="Product information is being loaded from the API."
       />
     );
@@ -82,13 +81,13 @@ function ProductRoute({
 
   if (!product) {
     return (
-        <StateLayout
-          searchProps={searchProps}
-          cartCount={cartCount}
-          wishlistCount={wishlistCount}
-          onCartClick={onCartClick}
-          eyebrow="Product catalog"
-          title="Product not found."
+      <StateLayout
+        searchProps={searchProps}
+        cartCount={cartCount}
+        wishlistCount={wishlistCount}
+        onCartClick={onCartClick}
+        eyebrow="Product catalog"
+        title="Product not found."
         description="This product is not available in the current catalog."
       />
     );
@@ -121,8 +120,7 @@ function SearchEmptyLayout({ searchProps, searchValue, cartCount, wishlistCount,
           <p className="text-[11px] tracking-[0.28em] text-slate-500 uppercase">Search results</p>
           <h1 className="mt-4 text-3xl font-light tracking-tight text-slate-700">No products found.</h1>
           <p className="mt-4 text-sm leading-7 text-slate-600">
-            No matches for &quot;{searchValue.trim()}&quot;. Try a different product name, feature, or
-            description.
+            No matches for &quot;{searchValue.trim()}&quot;. Try a different product name, feature, or description.
           </p>
         </div>
       </main>
@@ -163,10 +161,7 @@ function AppContent() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(WISHLIST_STORAGE_KEY);
-      if (!raw) {
-        return;
-      }
-
+      if (!raw) return;
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
         setWishlistIds(parsed.map((id) => String(id)));
@@ -190,9 +185,7 @@ function AppContent() {
           api.getCart(CART_ID),
         ]);
 
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
 
         const categoriesById = new Map(apiCategories.map((category) => [category.id, category]));
         setProducts(
@@ -203,10 +196,7 @@ function AppContent() {
         setCart(initialCart);
         setCatalogStatus("success");
       } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
+        if (!isMounted) return;
         setCatalogError(error.message);
         setCatalogStatus("error");
       }
@@ -232,10 +222,9 @@ function AppContent() {
   }, [products]);
 
   const normalizedSearch = searchValue.trim().toLowerCase();
+
   const filteredProducts = useMemo(() => {
-    if (!normalizedSearch) {
-      return products;
-    }
+    if (!normalizedSearch) return products;
 
     return products.filter((product) => {
       const searchableContent = [
@@ -243,11 +232,11 @@ function AppContent() {
         product.volume,
         product.shortDescription,
         product.details,
-        ...product.features,
+        ...(product.features ?? []),
       ];
 
       return searchableContent.some((field) =>
-        field.toLowerCase().includes(normalizedSearch),
+        String(field).toLowerCase().includes(normalizedSearch),
       );
     });
   }, [normalizedSearch, products]);
@@ -270,6 +259,7 @@ function AppContent() {
   const cartCount = getCartItemCount(cart);
   const wishlistCount = wishlistIds.length;
   const isAdminRoute = location.pathname.startsWith("/admin");
+
   const showSearchEmpty =
     !isAdminRoute &&
     !isCatalogLoading &&
@@ -289,7 +279,6 @@ function AppContent() {
 
   const handleRemoveCartItem = useCallback(async (itemId) => {
     setRemovingItemId(itemId);
-
     try {
       const updatedCart = await api.removeCartItem(CART_ID, itemId);
       setCart(updatedCart);
@@ -321,9 +310,7 @@ function AppContent() {
   }, [products, wishlistIds]);
 
   const filteredWishlistProducts = useMemo(() => {
-    if (!normalizedSearch) {
-      return wishlistProducts;
-    }
+    if (!normalizedSearch) return wishlistProducts;
 
     const filteredIds = new Set(filteredProducts.map((product) => product.id));
     return wishlistProducts.filter((product) => filteredIds.has(product.id));
@@ -402,6 +389,17 @@ function AppContent() {
             }
           />
           <Route
+            path="/checkout"
+            element={
+              <CheckoutPage
+                searchProps={searchProps}
+                cartCount={cartCount}
+                wishlistCount={wishlistCount}
+                onCartClick={() => setCartOpen(true)}
+              />
+            }
+          />
+          <Route
             path="/wishlist"
             element={
               <WishlistPage
@@ -414,6 +412,17 @@ function AppContent() {
                 onCartClick={() => setCartOpen(true)}
                 onToggleWishlist={handleToggleWishlist}
                 isWishlisted={isWishlisted}
+              />
+            }
+          />
+          <Route
+            path="/orders"
+            element={
+              <OrdersPage
+                searchProps={searchProps}
+                cartCount={cartCount}
+                wishlistCount={wishlistCount}
+                onCartClick={() => setCartOpen(true)}
               />
             }
           />
@@ -434,17 +443,6 @@ function AppContent() {
             }
           />
           <Route
-            path="/checkout"
-            element={
-              <CheckoutPage
-                searchProps={searchProps}
-                cartCount={cartCount}
-                wishlistCount={wishlistCount}
-                onCartClick={() => setCartOpen(true)}
-              />
-            }
-          />
-          <Route
             path="/admin"
             element={
               <AdminRoute
@@ -456,13 +454,11 @@ function AppContent() {
               />
             }
           />
-          <Route
-            path="/sales-manager"
-            element={<SalesManagerPage />}
-          />
+          <Route path="/sales-manager" element={<SalesManagerPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       )}
+
       <CartDrawer
         open={cartOpen}
         cart={cart}

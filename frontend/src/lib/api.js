@@ -90,6 +90,13 @@ export const api = {
     });
   },
 
+  checkoutCart(cartId, token) {
+    return request(`/carts/${cartId}/checkout`, {
+        method: "POST",
+        token,
+    });
+  },
+
   login(email, password) {
     return request("/auth/login", {
       method: "POST",
@@ -203,6 +210,22 @@ export const api = {
     return request(`/admin/reviews/${reviewId}`, {
       method: "DELETE",
       token,
+    });
+  },
+
+  getMyOrders(token) {
+    return request("/orders/mine", { token });
+  },
+
+  listAdminOrders(token) {
+    return request("/admin/orders", { token });
+  },
+
+  updateAdminOrderStatus(token, orderId, newStatus) {
+    return request(`/admin/orders/${orderId}/status`, {
+      method: "PATCH",
+      token,
+      body: { status: newStatus },
     });
   },
 };
