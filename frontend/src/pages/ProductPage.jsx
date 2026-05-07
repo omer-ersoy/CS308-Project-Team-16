@@ -263,10 +263,10 @@ function ProductPage({
       }
 
       await refreshReviews();
+      const hasComment = reviewComment.trim().length > 0;
+      const commentChanged = !ownReview || reviewComment !== ownReview.comment;
       setReviewMessage(
-        ownReview && reviewComment === ownReview.comment
-          ? "Rating saved."
-          : "Rating saved. Comment submitted for approval.",
+        hasComment && commentChanged ? "Rating saved. Comment submitted for approval." : "Rating saved.",
       );
     } catch (error) {
       setReviewError(error.message);
@@ -492,11 +492,10 @@ function ProductPage({
                     <textarea
                       value={reviewComment}
                       onChange={(event) => setReviewComment(event.target.value)}
-                      placeholder="Share your thoughts about this perfume"
+                      placeholder="Share your thoughts about this perfume (optional)"
                       rows="5"
                       maxLength="2000"
                       className="mt-5 w-full border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
-                      required
                     />
                     <div className="mt-4 flex flex-wrap gap-3">
                       <button
@@ -508,7 +507,7 @@ function ProductPage({
                           ? "Saving"
                           : ownReview
                             ? "Save rating"
-                            : "Save rating and submit comment"}
+                            : "Save rating"}
                       </button>
                       {ownReview && (
                         <button
@@ -570,7 +569,9 @@ function ProductPage({
                       </div>
                       <RatingStars rating={review.rating} />
                     </div>
-                    <p className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-600">{review.comment}</p>
+                    {review.comment.trim() ? (
+                      <p className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-600">{review.comment}</p>
+                    ) : null}
                   </article>
                 ))
               )}

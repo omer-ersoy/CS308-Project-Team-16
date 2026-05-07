@@ -816,6 +816,7 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
                           onChange={(event) =>
                             handleReviewDraftChange(review.id, "comment", event.target.value)
                           }
+                          placeholder="Rating-only review. Admin can add an internal moderation note or leave this blank."
                           rows="4"
                           maxLength="2000"
                           className="mt-4 w-full border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
