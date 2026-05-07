@@ -66,6 +66,29 @@ def add_item_to_cart(
     product = db.get(Product, payload.product_id)
     if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+    if payload.quantity <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Quantity must be greater than zero.",
+        )
+    if product.quantity_in_stock <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Product is out of stock.",
+        )
+
+    existing_quantity = sum(
+        item.quantity for item in cart.items if item.product_id == product.id
+    )
+    requested_quantity = existing_quantity + payload.quantity
+    if requested_quantity > product.quantity_in_stock:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Only {product.quantity_in_stock} item"
+                f"{'' if product.quantity_in_stock == 1 else 's'} available in stock."
+            ),
+        )
 
     db.add(
         CartItem(

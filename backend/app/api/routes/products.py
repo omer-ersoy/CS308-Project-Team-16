@@ -12,5 +12,11 @@ router = APIRouter()
 
 
 @router.get("", response_model=list[ProductRead])
-def list_products(db: Session = Depends(get_db)) -> list[Product]:
-    return db.scalars(select(Product).order_by(Product.id)).all()
+def list_products(
+    category_id: int | None = None,
+    db: Session = Depends(get_db),
+) -> list[Product]:
+    query = select(Product)
+    if category_id is not None:
+        query = query.where(Product.category_id == category_id)
+    return db.scalars(query.order_by(Product.id)).all()

@@ -3,8 +3,9 @@ import { Link } from "react-router-dom";
 function ProductCard({ product, isWishlisted = false, onToggleWishlist }) {
   const stockCount = product.stock ?? 0;
   const isOutOfStock = stockCount === 0;
-  const wishlistLabel = isWishlisted ? "Remove from wishlist" : "Add to wishlist";
-  const wishlistSymbol = isWishlisted ? "♥" : "♡";
+  const isWishlistActive = isWishlisted === true;
+  const wishlistLabel = isWishlistActive ? "Remove from wishlist" : "Add to wishlist";
+  const wishlistSymbol = isWishlistActive ? "♥" : "♡";
 
   const handleWishlistClick = (event) => {
     event.preventDefault();
@@ -20,7 +21,7 @@ function ProductCard({ product, isWishlisted = false, onToggleWishlist }) {
         aria-label={wishlistLabel}
         title={wishlistLabel}
         className={`absolute right-4 top-4 z-10 h-10 w-10 rounded-full border text-lg leading-none transition ${
-          isWishlisted
+          isWishlistActive
             ? "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
             : "border-slate-200 bg-white/95 text-slate-400 hover:text-rose-500"
         }`}
