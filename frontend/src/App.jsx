@@ -395,26 +395,49 @@ function AppContent() {
     async (invoice) => {
       if (!currentUser?.email) return;
 
+      const invoiceText = buildInvoiceText(invoice, productsByApiId);
+      const orderItems = (invoice.items ?? []).map((item) => {
+        const product = productsByApiId.get(item.product_id);
+        const itemName = product?.name ?? `Product #${item.product_id}`;
+
+        return {
+          name: itemName,
+          units: item.quantity,
+          price: item.unit_price,
+          item_total: item.line_total,
+        };
+      });
       const templateParams = {
         to_email: currentUser.email,
+        reply: currentUser.email,
+        reply_to: currentUser.email,
+        from_name: currentUser.full_name ?? currentUser.name ?? "Fragrance Shop Customer",
         user_name: currentUser.full_name ?? currentUser.name ?? "Customer",
         order_id: invoice.order_id,
+        total: invoice.total_amount,
         total_amount: `${invoice.total_amount} USD`,
-        invoice_text: buildInvoiceText(invoice, productsByApiId),
+        message: invoiceText,
+        orders: orderItems,
+        item_names: orderItems.map((item) => item.name).join(", "),
+        item_prices: orderItems.map((item) => String(item.price)).join(", "),
+        invoice_text: invoiceText,
       };
 
       try {
         const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-        const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+        const templateId =
+          import.meta.env.VITE_EMAILJS_ORDER_TEMPLATE_ID ??
+          import.meta.env.VITE_EMAILJS_TEMPLATE_ID ??
+          "template_xtkn2jc";
         const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
         if (!serviceId || !templateId || !publicKey) {
           return;
         }
 
-        await emailjs.send(serviceId, templateId, templateParams, publicKey);
-      } catch {
-        // ignore email errors for now
+        await emailjs.send(serviceId, templateId, templateParams, { publicKey });
+      } catch (error) {
+        console.error("Order email failed", error);
       }
     },
     [currentUser, productsByApiId],
@@ -461,7 +484,7 @@ function AppContent() {
             element={
               <HomePage
                 searchProps={searchProps}
-                products={sortedFilteredProducts}
+                products={filteredProducts}
                 categories={categories}
                 selectedCategoryId={selectedCategoryId}
                 onCategorySelect={handleCategorySelect}
