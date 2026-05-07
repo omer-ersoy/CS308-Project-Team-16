@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import PageShell from "../components/PageShell";
-import { api } from "../lib/api";
-
-const CART_ID = 1;
 
 function CheckoutPage({
   searchProps,
   cartCount = 0,
   wishlistCount = 0,
   onCartClick,
+  onCheckout,
+  isCheckingOut = false,
+  checkoutMessage = "",
 }) {
-  const { isLoggedIn, openAuth, token } = useAuth();
+  const { isLoggedIn, openAuth } = useAuth();
 
   const [cardName, setCardName] = useState("");
   const [cardNumber, setCardNumber] = useState("");
@@ -19,7 +19,6 @@ function CheckoutPage({
   const [cvv, setCvv] = useState("");
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [invoice, setInvoice] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleMockPayment = async () => {
@@ -30,21 +29,12 @@ function CheckoutPage({
       return;
     }
 
-    if (!token) {
-      setError("You must be logged in to continue.");
-      return;
-    }
-
-    setLoading(true);
-
     try {
-      const result = await api.checkoutCart(CART_ID, token);
+      const result = await onCheckout();
       setInvoice(result);
       setPaymentComplete(true);
     } catch (err) {
       setError(err.message || "Checkout failed.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -161,15 +151,17 @@ function CheckoutPage({
                   </div>
                 </div>
 
-                {error && <p className="mt-4 text-sm text-rose-600">{error}</p>}
+                {(error || checkoutMessage) && (
+                  <p className="mt-4 text-sm text-rose-600">{error || checkoutMessage}</p>
+                )}
 
                 <button
                   type="button"
                   onClick={handleMockPayment}
-                  disabled={loading}
+                  disabled={isCheckingOut}
                   className="mt-8 rounded-full bg-slate-900 px-6 py-3 text-xs font-medium uppercase tracking-[0.2em] text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {loading ? "Processing..." : "Complete Mock Payment"}
+                  {isCheckingOut ? "Processing..." : "Complete Mock Payment"}
                 </button>
               </>
             ) : (

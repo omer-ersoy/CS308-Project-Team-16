@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import emailjs from "@emailjs/browser";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import CartDrawer from "./components/CartDrawer";
 import PageShell from "./components/PageShell";
@@ -22,6 +23,28 @@ const WISHLIST_STORAGE_KEY = "wishlist-product-ids";
 
 function getCartItemCount(cart) {
   return cart?.items?.reduce((total, item) => total + item.quantity, 0) ?? 0;
+}
+
+function buildInvoiceText(invoice, productsByApiId) {
+  const itemLines = invoice.items
+    .map((item) => {
+      const product = productsByApiId.get(item.product_id);
+      const productName = product?.name ?? `Product #${item.product_id}`;
+      return `- ${productName} | Qty: ${item.quantity} | Unit: ${item.unit_price} USD | Line Total: ${item.line_total} USD`;
+    })
+    .join("\n");
+
+  return [
+    `Order ID: ${invoice.order_id}`,
+    `Database Order ID: ${invoice.db_order_id}`,
+    `Status: ${invoice.status}`,
+    `Created At: ${invoice.created_at}`,
+    `Item Count: ${invoice.item_count}`,
+    `Total Amount: ${invoice.total_amount} USD`,
+    "",
+    "Items:",
+    itemLines,
+  ].join("\n");
 }
 
 function StateLayout({
@@ -147,6 +170,7 @@ function AdminRoute({ searchProps, cartCount, wishlistCount, onCartClick, onCata
 }
 
 function AppContent() {
+  const { token, currentUser, openAuth } = useAuth();
   const location = useLocation();
   const [products, setProducts] = useState([]);
   const [catalogReloadKey, setCatalogReloadKey] = useState(0);
@@ -157,6 +181,9 @@ function AppContent() {
   const [removingItemId, setRemovingItemId] = useState(null);
   const [searchValue, setSearchValue] = useState("");
   const [wishlistIds, setWishlistIds] = useState([]);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [checkoutMessage, setCheckoutMessage] = useState("");
+  const [sortOption, setSortOption] = useState("default");
 
   useEffect(() => {
     try {
@@ -224,22 +251,40 @@ function AppContent() {
   const normalizedSearch = searchValue.trim().toLowerCase();
 
   const filteredProducts = useMemo(() => {
-    if (!normalizedSearch) return products;
+    let visibleProducts = products;
 
-    return products.filter((product) => {
-      const searchableContent = [
-        product.name,
-        product.volume,
-        product.shortDescription,
-        product.details,
-        ...(product.features ?? []),
-      ];
+    if (normalizedSearch) {
+      visibleProducts = visibleProducts.filter((product) => {
+        const searchableContent = [
+          product.name,
+          product.volume,
+          product.shortDescription,
+          product.details,
+          ...(product.features ?? []),
+        ];
 
-      return searchableContent.some((field) =>
-        String(field).toLowerCase().includes(normalizedSearch),
+        return searchableContent.some((field) =>
+          String(field).toLowerCase().includes(normalizedSearch),
+        );
+      });
+    }
+
+    if (sortOption === "price-asc") {
+      return [...visibleProducts].sort((a, b) => Number(a.price) - Number(b.price));
+    }
+
+    if (sortOption === "price-desc") {
+      return [...visibleProducts].sort((a, b) => Number(b.price) - Number(a.price));
+    }
+
+    if (sortOption === "popularity") {
+      return [...visibleProducts].sort(
+        (a, b) => Number(b.popularity ?? 0) - Number(a.popularity ?? 0),
       );
-    });
-  }, [normalizedSearch, products]);
+    }
+
+    return visibleProducts;
+  }, [normalizedSearch, products, sortOption]);
 
   const searchStatus = normalizedSearch
     ? filteredProducts.length > 0
@@ -311,10 +356,67 @@ function AppContent() {
 
   const filteredWishlistProducts = useMemo(() => {
     if (!normalizedSearch) return wishlistProducts;
-
     const filteredIds = new Set(filteredProducts.map((product) => product.id));
     return wishlistProducts.filter((product) => filteredIds.has(product.id));
   }, [filteredProducts, normalizedSearch, wishlistProducts]);
+
+  const productsByApiId = useMemo(
+    () => new Map(products.map((product) => [product.apiId, product])),
+    [products],
+  );
+
+  const sendInvoiceEmail = useCallback(
+    async (invoice) => {
+      if (!currentUser?.email) return;
+
+      const templateParams = {
+        to_email: currentUser.email,
+        user_name: currentUser.full_name ?? currentUser.name ?? "Customer",
+        order_id: invoice.order_id,
+        total_amount: `${invoice.total_amount} USD`,
+        invoice_text: buildInvoiceText(invoice, productsByApiId),
+      };
+
+      try {
+        const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+        const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+        const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+        if (!serviceId || !templateId || !publicKey) {
+          return;
+        }
+
+        await emailjs.send(serviceId, templateId, templateParams, publicKey);
+      } catch {
+        // ignore email errors for now
+      }
+    },
+    [currentUser, productsByApiId],
+  );
+
+  const handleCheckout = useCallback(async () => {
+    if (!token) {
+      openAuth("login");
+      throw new Error("Login required before checkout.");
+    }
+
+    setIsCheckingOut(true);
+    setCheckoutMessage("");
+
+    try {
+      const invoice = await api.checkoutCart(CART_ID, token);
+      setCart(await api.getCart(CART_ID));
+      setCatalogReloadKey((current) => current + 1);
+      setCheckoutMessage(`Checkout completed. Order ${invoice.order_id} created.`);
+      await sendInvoiceEmail(invoice);
+      return invoice;
+    } catch (error) {
+      setCheckoutMessage(error.message);
+      throw error;
+    } finally {
+      setIsCheckingOut(false);
+    }
+  }, [token, openAuth, sendInvoiceEmail]);
 
   return (
     <>
@@ -333,6 +435,8 @@ function AppContent() {
             element={
               <HomePage
                 searchProps={searchProps}
+                sortOption={sortOption}
+                onSortChange={setSortOption}
                 products={filteredProducts}
                 isLoading={isCatalogLoading}
                 error={catalogError}
@@ -396,6 +500,9 @@ function AppContent() {
                 cartCount={cartCount}
                 wishlistCount={wishlistCount}
                 onCartClick={() => setCartOpen(true)}
+                onCheckout={handleCheckout}
+                isCheckingOut={isCheckingOut}
+                checkoutMessage={checkoutMessage}
               />
             }
           />
