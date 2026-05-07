@@ -26,6 +26,15 @@ function getCartItemCount(cart) {
   return cart?.items?.reduce((total, item) => total + item.quantity, 0) ?? 0;
 }
 
+function getPopularityScore(product) {
+  const ratingCount = Number(product.ratingCount ?? 0);
+  if (ratingCount <= 0) {
+    return 0;
+  }
+
+  return Number(product.popularity ?? product.averageRating ?? 0);
+}
+
 function buildInvoiceText(invoice, productsByApiId) {
   const itemLines = enrichInvoiceItems(invoice, productsByApiId)
     .map((item) => {
@@ -46,6 +55,110 @@ function buildInvoiceText(invoice, productsByApiId) {
     "Items:",
     itemLines,
   ].join("\n");
+}
+
+function money(value) {
+  return `$${Number(value ?? 0).toFixed(2)}`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function buildInvoiceEmailHtml(invoice, productsByApiId) {
+  const itemsHtml = enrichInvoiceItems(invoice, productsByApiId)
+    .map((item) => {
+      return `
+        <tr>
+          <td style="padding:20px 10px;border-bottom:2px solid #222;">
+            <strong>${escapeHtml(item.product_name)}</strong><br>
+            <span style="color:#666;">QTY: ${escapeHtml(item.quantity)}</span><br>
+            <span style="color:#666;">Unit Price: ${money(item.unit_price)}</span>
+          </td>
+          <td style="padding:20px 10px;border-bottom:2px solid #222;text-align:right;font-weight:700;">
+            ${money(item.line_total)}
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  return `
+    <div style="max-width:640px;margin:0 auto;background:#fff;border-top:6px solid #438c12;padding:24px;font-family:Arial,sans-serif;color:#222;">
+      <h2 style="margin:0 0 28px;font-size:22px;">Thank You for Your Order</h2>
+      <p style="margin:0 0 24px;color:#444;">We'll send you tracking information when the order ships.</p>
+      <h3 style="margin:0 0 8px;font-size:18px;">Order # ${escapeHtml(invoice.order_id)}</h3>
+      <div style="border-top:2px solid #222;margin-bottom:28px;"></div>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+        ${itemsHtml}
+      </table>
+      <table role="presentation" width="45%" align="right" cellspacing="0" cellpadding="0" style="margin-top:48px;border-collapse:collapse;">
+        <tr>
+          <td style="padding:10px;">Shipping</td>
+          <td style="padding:10px;text-align:right;">FREE</td>
+        </tr>
+        <tr>
+          <td style="padding:16px 10px;border-top:2px solid #222;font-weight:700;">Order Total</td>
+          <td style="padding:16px 10px;border-top:2px solid #222;text-align:right;font-weight:700;">${money(invoice.total_amount)}</td>
+        </tr>
+      </table>
+      <div style="clear:both;"></div>
+    </div>
+  `;
+}
+
+function dataUrlToFile(dataUrl, fileName) {
+  const [metadata, base64Content] = dataUrl.split(",");
+  const mimeType = metadata.match(/^data:(.*?);base64$/)?.[1] ?? "application/pdf";
+  const binary = atob(base64Content);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return new File([bytes], fileName, { type: mimeType });
+}
+
+function appendHiddenField(form, name, value) {
+  const input = document.createElement("input");
+  input.type = "hidden";
+  input.name = name;
+  input.value = String(value ?? "");
+  form.appendChild(input);
+}
+
+function appendFileField(form, name, file) {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.name = name;
+
+  const dataTransfer = new DataTransfer();
+  dataTransfer.items.add(file);
+  input.files = dataTransfer.files;
+  form.appendChild(input);
+}
+
+function buildInvoiceEmailForm(templateParams, invoiceFile) {
+  const form = document.createElement("form");
+  form.method = "post";
+  form.enctype = "multipart/form-data";
+  form.style.display = "none";
+
+  Object.entries(templateParams).forEach(([name, value]) => {
+    appendHiddenField(form, name, value);
+  });
+
+  ["my_file", "attachment", "file", "invoice_file"].forEach((fieldName) => {
+    appendFileField(form, fieldName, invoiceFile);
+  });
+
+  return form;
 }
 
 function StateLayout({
@@ -301,9 +414,22 @@ function AppContent() {
     }
 
     if (sortOption === "popularity") {
-      return [...visibleProducts].sort(
-        (a, b) => Number(b.popularity ?? 0) - Number(a.popularity ?? 0),
-      );
+      return [...visibleProducts].sort((a, b) => {
+        const aScore = getPopularityScore(a);
+        const bScore = getPopularityScore(b);
+
+        if (aScore !== bScore) {
+          return bScore - aScore;
+        }
+
+        const aHasRatings = Number(a.ratingCount ?? 0) > 0;
+        const bHasRatings = Number(b.ratingCount ?? 0) > 0;
+        if (aHasRatings !== bHasRatings) {
+          return aHasRatings ? -1 : 1;
+        }
+
+        return Number(a.apiId ?? 0) - Number(b.apiId ?? 0);
+      });
     }
 
     return visibleProducts;
@@ -407,46 +533,106 @@ function AppContent() {
       }
 
       const invoiceText = buildInvoiceText(invoice, productsByApiId);
-      const orderItems = (invoice.items ?? []).map((item) => {
-        const product = productsByApiId.get(item.product_id);
-        const itemName = product?.name ?? `Product #${item.product_id}`;
-
-        return {
-          name: itemName,
-          units: item.quantity,
-          price: item.unit_price,
-          item_total: item.line_total,
-        };
-      });
+      const invoicePdf = buildInvoicePdfDataUrl(invoice, productsByApiId);
+      const invoicePdfBase64 = invoicePdf.replace(/^data:application\/pdf;base64,/, "");
+      const invoiceHtml = buildInvoiceEmailHtml(invoice, productsByApiId);
+      const invoiceItems = enrichInvoiceItems(invoice, productsByApiId);
+      const orderItemsText = invoiceItems
+        .map((item) => {
+          return `${item.product_name} | QTY: ${item.quantity} | Unit Price: ${money(item.unit_price)} | Total: ${money(item.line_total)}`;
+        })
+        .join("\n");
+      const orderItemsHtml = invoiceItems
+        .map((item) => {
+          return `<strong>${escapeHtml(item.product_name)}</strong><br>QTY: ${escapeHtml(item.quantity)}<br>Unit Price: ${money(item.unit_price)}<br>Total: ${money(item.line_total)}`;
+        })
+        .join("<hr>");
+      const emailJsOrders = invoiceItems.map((item) => ({
+        name: item.product_name,
+        units: item.quantity,
+        price: item.unit_price,
+        item_total: item.line_total,
+      }));
+      const customerName = currentUser.full_name ?? currentUser.name ?? "Customer";
+      const customerEmail = currentUser.email;
+      const invoiceFileName = `${invoice.order_id}-invoice.pdf`;
       const templateParams = {
-        to_email: currentUser.email,
-        reply: currentUser.email,
-        reply_to: currentUser.email,
-        from_name: currentUser.full_name ?? currentUser.name ?? "Fragrance Shop Customer",
-        user_name: currentUser.full_name ?? currentUser.name ?? "Customer",
+        to_email: customerEmail,
+        email: customerEmail,
+        user_email: customerEmail,
+        customer_email: customerEmail,
+        reply: customerEmail,
+        reply_to: customerEmail,
+        from_name: customerName,
+        to_name: customerName,
+        user_name: customerName,
+        customer_name: customerName,
+        subject: `Invoice for order ${invoice.order_id}`,
+        message: invoiceText,
+        html_message: invoiceHtml,
         order_id: invoice.order_id,
         total: invoice.total_amount,
+        subtotal: money(invoice.total_amount),
+        shipping: "FREE",
+        order_total: money(invoice.total_amount),
         total_amount: `${invoice.total_amount} USD`,
-        invoice_text: buildInvoiceText(invoice, productsByApiId),
-        invoice_pdf: buildInvoicePdfDataUrl(invoice, productsByApiId),
+        orders: emailJsOrders,
+        item_names: emailJsOrders.map((item) => item.name).join(", "),
+        item_prices: emailJsOrders.map((item) => String(item.price)).join(", "),
+        order_items: orderItemsText,
+        order_items_text: orderItemsText,
+        order_items_html: orderItemsHtml,
+        invoice_html: invoiceHtml,
+        invoice_text: invoiceText,
+        invoice_pdf: invoicePdf,
+        invoice_pdf_base64: invoicePdfBase64,
+        invoice_pdf_file: invoicePdf,
+        invoice_pdf_filename: invoiceFileName,
+        attachment: invoicePdf,
+        attachment_name: invoiceFileName,
+        content: invoicePdf,
+        file: invoicePdf,
+        pdf: invoicePdf,
+        my_file: invoicePdf,
       };
+      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+      const templateId =
+        import.meta.env.VITE_EMAILJS_INVOICE_TEMPLATE_ID ??
+        import.meta.env.VITE_EMAILJS_ORDER_TEMPLATE_ID ??
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID ??
+        "template_xtkn2jc";
+      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
       try {
-        const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-        const templateId =
-          import.meta.env.VITE_EMAILJS_INVOICE_TEMPLATE_ID ??
-          import.meta.env.VITE_EMAILJS_ORDER_TEMPLATE_ID ??
-          import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
-        const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
-
         if (!serviceId || !templateId || !publicKey) {
-          return { sent: false, reason: "EmailJS is not configured in the frontend environment." };
+          return {
+            sent: false,
+            reason:
+              "Invoice EmailJS service or public key is not configured.",
+          };
         }
 
-        await emailjs.send(serviceId, templateId, templateParams, { publicKey });
+        const invoiceFile = dataUrlToFile(invoicePdf, invoiceFileName);
+        const invoiceForm = buildInvoiceEmailForm(templateParams, invoiceFile);
+        document.body.appendChild(invoiceForm);
+
+        try {
+          await emailjs.sendForm(serviceId, templateId, invoiceForm, { publicKey });
+        } finally {
+          invoiceForm.remove();
+        }
+
         return { sent: true };
       } catch (error) {
-        return { sent: false, reason: error?.message ?? "EmailJS send failed." };
+        try {
+          await emailjs.send(serviceId, templateId, templateParams, { publicKey });
+          return { sent: true };
+        } catch (fallbackError) {
+          return {
+            sent: false,
+            reason: fallbackError?.message ?? error?.message ?? "EmailJS send failed.",
+          };
+        }
       }
     },
     [currentUser, productsByApiId],

@@ -119,6 +119,52 @@ def test_review_create_strips_comment_whitespace(
     assert response.json()["status"] == "pending"
 
 
+def test_review_create_allows_rating_without_comment_and_lists_for_admin(
+    client: TestClient,
+    db_session: Session,
+    sample_data: dict[str, object],
+) -> None:
+    product = sample_data["product"]
+    admin = sample_data["admin"]
+    new_customer = User(
+        full_name="Rating Only Customer",
+        email="rating-only@example.com",
+        role="customer",
+        hashed_password=hash_password("password123"),
+    )
+    db_session.add(new_customer)
+    db_session.flush()
+    order = Order(user_id=new_customer.id, status="delivered", total_amount=product.price)
+    db_session.add(order)
+    db_session.flush()
+    db_session.add(
+        OrderItem(
+            order_id=order.id,
+            product_id=product.id,
+            product_name=product.name,
+            quantity=1,
+            unit_price=product.price,
+        )
+    )
+    db_session.commit()
+
+    response = client.post(
+        f"/api/products/{product.id}/reviews",
+        headers=auth_headers(new_customer),
+        json={"rating": 4},
+    )
+
+    assert response.status_code == 201
+    review = response.json()
+    assert review["comment"] == ""
+    assert review["status"] == "pending"
+
+    admin_response = client.get("/api/admin/reviews", headers=auth_headers(admin))
+
+    assert admin_response.status_code == 200
+    assert any(admin_review["id"] == review["id"] for admin_review in admin_response.json())
+
+
 def test_review_create_requires_delivered_purchase(
     client: TestClient,
     db_session: Session,
@@ -203,7 +249,11 @@ def test_non_author_cannot_update_review(client: TestClient, sample_data: dict[s
     assert response.json()["detail"] == "Review can only be edited by its author"
 
 
-def test_update_review_rejects_empty_comment(client: TestClient, sample_data: dict[str, object]) -> None:
+def test_update_review_allows_clearing_comment(
+    client: TestClient,
+    db_session: Session,
+    sample_data: dict[str, object],
+) -> None:
     product = sample_data["product"]
     review = sample_data["pending_review"]
     customer = sample_data["customer"]
@@ -214,7 +264,10 @@ def test_update_review_rejects_empty_comment(client: TestClient, sample_data: di
         json={"comment": "   "},
     )
 
-    assert response.status_code == 422
+    assert response.status_code == 200
+    assert response.json()["comment"] == ""
+    db_session.refresh(review)
+    assert review.comment == ""
 
 
 def test_review_author_can_delete_their_review(

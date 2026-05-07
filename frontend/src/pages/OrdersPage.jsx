@@ -33,7 +33,7 @@ function formatOrderDate(value) {
 function OrdersPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick }) {
   const { token, isLoggedIn, openAuth } = useAuth();
   const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -42,13 +42,12 @@ function OrdersPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick
     }
 
     let isMounted = true;
-    setLoading(true);
-    setError("");
 
     api
       .getMyOrders(token)
       .then((nextOrders) => {
         if (isMounted) {
+          setError("");
           setOrders(nextOrders);
         }
       })
