@@ -33,8 +33,13 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  listProducts() {
-    return request("/products");
+  listProducts(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.categoryId) {
+      searchParams.set("category_id", String(params.categoryId));
+    }
+    const queryString = searchParams.toString();
+    return request(`/products${queryString ? `?${queryString}` : ""}`);
   },
 
   listProductReviews(productId, token) {

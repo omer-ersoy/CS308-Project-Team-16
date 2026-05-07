@@ -42,6 +42,8 @@ export function adaptProduct(apiProduct, category) {
     price: Number(apiProduct.price),
     currency: "USD",
     stock: apiProduct.quantity_in_stock,
+    categoryId: apiProduct.category_id,
+    categoryName: category?.name ?? "",
     shortDescription: apiProduct.description,
     features: [
       category?.name,

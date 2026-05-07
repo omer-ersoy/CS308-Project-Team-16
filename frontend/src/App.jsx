@@ -220,6 +220,8 @@ function AppContent() {
   const { token, currentUser, openAuth } = useAuth();
   const location = useLocation();
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [catalogReloadKey, setCatalogReloadKey] = useState(0);
   const [catalogStatus, setCatalogStatus] = useState("loading");
   const [catalogError, setCatalogError] = useState("");
@@ -228,6 +230,7 @@ function AppContent() {
   const [removingItemId, setRemovingItemId] = useState(null);
   const [searchValue, setSearchValue] = useState("");
   const [wishlistIds, setWishlistIds] = useState([]);
+  const [wishlistHydrated, setWishlistHydrated] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState("");
   const [sortOption, setSortOption] = useState("default");
@@ -243,6 +246,8 @@ function AppContent() {
       }
     } catch {
       setWishlistIds([]);
+    } finally {
+      setWishlistHydrated(true);
     }
   }, []);
 
@@ -255,7 +260,7 @@ function AppContent() {
 
       try {
         const [apiProducts, apiCategories, initialCart] = await Promise.all([
-          api.listProducts(),
+          api.listProducts({ categoryId: selectedCategoryId }),
           api.listCategories(),
           api.getCart(CART_ID),
         ]);
@@ -263,6 +268,7 @@ function AppContent() {
         if (!isMounted) return;
 
         const categoriesById = new Map(apiCategories.map((category) => [category.id, category]));
+        setCategories(apiCategories);
         setProducts(
           apiProducts.map((product) =>
             adaptProduct(product, categoriesById.get(product.category_id)),
@@ -282,19 +288,27 @@ function AppContent() {
     return () => {
       isMounted = false;
     };
-  }, [catalogReloadKey]);
+  }, [catalogReloadKey, selectedCategoryId]);
 
   useEffect(() => {
+    if (!wishlistHydrated) {
+      return;
+    }
+
     localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(wishlistIds));
-  }, [wishlistIds]);
+  }, [wishlistHydrated, wishlistIds]);
 
   useEffect(() => {
+    if (!wishlistHydrated || catalogStatus !== "success") {
+      return;
+    }
+
     const validIds = new Set(products.map((product) => product.id));
     setWishlistIds((current) => {
       const filtered = current.filter((id) => validIds.has(id));
       return filtered.length === current.length ? current : filtered;
     });
-  }, [products]);
+  }, [catalogStatus, products, wishlistHydrated]);
 
   const normalizedSearch = searchValue.trim().toLowerCase();
 
@@ -352,6 +366,14 @@ function AppContent() {
     setCatalogReloadKey((current) => current + 1);
   }, []);
 
+  const handleCategorySelect = useCallback((categoryId) => {
+    setSelectedCategoryId(String(categoryId));
+  }, []);
+
+  const handleClearCategory = useCallback(() => {
+    setSelectedCategoryId("");
+  }, []);
+
   const handleRemoveCartItem = useCallback(async (itemId) => {
     setRemovingItemId(itemId);
     try {
@@ -365,10 +387,14 @@ function AppContent() {
 
   const handleToggleWishlist = useCallback((productId) => {
     setWishlistIds((current) => {
+      let nextWishlistIds;
       if (current.includes(productId)) {
-        return current.filter((id) => id !== productId);
+        nextWishlistIds = current.filter((id) => id !== productId);
+      } else {
+        nextWishlistIds = [productId, ...current];
       }
-      return [productId, ...current];
+      localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(nextWishlistIds));
+      return nextWishlistIds;
     });
   }, []);
 
@@ -494,6 +520,10 @@ function AppContent() {
               <HomePage
                 searchProps={searchProps}
                 products={sortedFilteredProducts}
+                categories={categories}
+                selectedCategoryId={selectedCategoryId}
+                onCategorySelect={handleCategorySelect}
+                onClearCategory={handleClearCategory}
                 isLoading={isCatalogLoading}
                 error={catalogError}
                 cartCount={cartCount}

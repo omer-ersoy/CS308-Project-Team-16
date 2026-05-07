@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../api";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api";
+
 function mockJsonResponse(data, init = {}) {
   return {
     ok: init.ok ?? true,
@@ -23,7 +25,7 @@ describe("api client", () => {
     });
 
     expect(result).toEqual({ id: 9 });
-    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/api/products/3/reviews", {
+    expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/products/3/reviews`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -38,7 +40,7 @@ describe("api client", () => {
 
     await api.updateAdminReview("admin-token", 7, { status: "approved" });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/api/admin/reviews/7", {
+    expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/admin/reviews/7`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -54,7 +56,7 @@ describe("api client", () => {
     const result = await api.listProductReviews(3, "token-123");
 
     expect(result).toEqual([]);
-    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/api/products/3/reviews", {
+    expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/products/3/reviews`, {
       headers: {
         Authorization: "Bearer token-123",
       },
@@ -70,7 +72,7 @@ describe("api client", () => {
       comment: "Still good",
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/api/products/3/reviews/11", {
+    expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/products/3/reviews/11`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -86,7 +88,7 @@ describe("api client", () => {
     const result = await api.deleteProductReview("token-123", 3, 11);
 
     expect(result).toBeNull();
-    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/api/products/3/reviews/11", {
+    expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/products/3/reviews/11`, {
       method: "DELETE",
       headers: {
         Authorization: "Bearer token-123",
@@ -114,7 +116,7 @@ describe("api client", () => {
 
     await api.deleteAdminReview("admin-token", 7);
 
-    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/api/admin/reviews/7", {
+    expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/admin/reviews/7`, {
       method: "DELETE",
       headers: {
         Authorization: "Bearer admin-token",
@@ -133,12 +135,23 @@ describe("api client", () => {
 
     await api.register(payload);
 
-    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/api/auth/register", {
+    expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
+    });
+  });
+
+  it("adds category filters to product list requests", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(mockJsonResponse([]));
+
+    await api.listProducts({ categoryId: 4 });
+
+    expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/products?category_id=4`, {
+      headers: {},
+      body: undefined,
     });
   });
 });
