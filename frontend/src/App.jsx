@@ -406,10 +406,26 @@ function AppContent() {
         return { sent: false, reason: "No user email address found." };
       }
 
+      const invoiceText = buildInvoiceText(invoice, productsByApiId);
+      const orderItems = (invoice.items ?? []).map((item) => {
+        const product = productsByApiId.get(item.product_id);
+        const itemName = product?.name ?? `Product #${item.product_id}`;
+
+        return {
+          name: itemName,
+          units: item.quantity,
+          price: item.unit_price,
+          item_total: item.line_total,
+        };
+      });
       const templateParams = {
         to_email: currentUser.email,
+        reply: currentUser.email,
+        reply_to: currentUser.email,
+        from_name: currentUser.full_name ?? currentUser.name ?? "Fragrance Shop Customer",
         user_name: currentUser.full_name ?? currentUser.name ?? "Customer",
         order_id: invoice.order_id,
+        total: invoice.total_amount,
         total_amount: `${invoice.total_amount} USD`,
         invoice_text: buildInvoiceText(invoice, productsByApiId),
         invoice_pdf: buildInvoicePdfDataUrl(invoice, productsByApiId),
