@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.deps import get_optional_current_user
+from app.api.deps import get_current_user
 from app.db.models import Cart, CartItem, Order, OrderItem, Product
 from app.db.session import get_db
 from app.schemas.cart import CartAddItem, CartItemRead, CartRead, CheckoutInvoiceItem, CheckoutInvoiceRead
@@ -92,7 +92,7 @@ def remove_item_from_cart(cart_id: int, item_id: int, db: Session = Depends(get_
 @router.post("/{cart_id}/checkout", response_model=CheckoutInvoiceRead)
 def checkout_cart(
     cart_id: int,
-    current_user: UserRead | None = Depends(get_optional_current_user),
+    current_user: UserRead = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CheckoutInvoiceRead:
     cart = (
@@ -132,9 +132,8 @@ def checkout_cart(
     total_amount = sum((invoice_item.line_total for invoice_item in invoice_items), start=Decimal("0.00"))
     item_count = sum(invoice_item.quantity for invoice_item in invoice_items)
 
-    user_id = current_user.id if current_user is not None else cart.user_id
     order = Order(
-        user_id=user_id,
+        user_id=current_user.id,
         status="processing",
         total_amount=total_amount,
     )
