@@ -17,6 +17,8 @@ class ProductBase(BaseModel):
 
 class ProductRead(ProductBase):
     id: int
+    average_rating: float = 0.0
+    rating_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 

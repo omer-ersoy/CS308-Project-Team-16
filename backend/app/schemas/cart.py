@@ -28,6 +28,7 @@ class CartRead(BaseModel):
 
 class CheckoutInvoiceItem(BaseModel):
     product_id: int
+    product_name: str
     quantity: int
     unit_price: Decimal
     line_total: Decimal
@@ -36,6 +37,8 @@ class CheckoutInvoiceItem(BaseModel):
 class CheckoutInvoiceRead(BaseModel):
     order_id: str
     db_order_id: int
+    customer_name: str
+    customer_email: str
     status: str
     created_at: str
     item_count: int
