@@ -1,6 +1,8 @@
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 function CartDrawer({ open, cart, products, removingItemId = null, onClose, onRemoveItem }) {
+  const { isLoggedIn } = useAuth();
   const productsByApiId = new Map(products.map((product) => [product.apiId, product]));
   const items = cart?.items ?? [];
   const totalAmount = Number(cart?.total_amount ?? 0);
@@ -90,17 +92,26 @@ function CartDrawer({ open, cart, products, removingItemId = null, onClose, onRe
             <span className="font-medium text-slate-900">{totalAmount} USD</span>
           </div>
 
-          <button
-            type="button"
-            disabled={items.length === 0}
-            onClick={() => {
-              onClose?.();
-              navigate("/checkout");
-            }}
-            className="mt-4 w-full rounded-full bg-slate-900 px-4 py-3.5 text-xs font-medium tracking-[0.2em] text-white uppercase transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Checkout
-          </button>
+          <div className="group relative mt-4">
+            {!isLoggedIn && items.length > 0 && (
+              <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-3 w-max max-w-[15rem] -translate-x-1/2 rounded-md bg-slate-900 px-3 py-2 text-center text-xs leading-5 text-white opacity-0 shadow-lg transition group-hover:opacity-100 group-focus-within:opacity-100">
+                You need to log in to complete checkout.
+                <span className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-slate-900" />
+              </div>
+            )}
+            <button
+              type="button"
+              disabled={items.length === 0}
+              title={!isLoggedIn && items.length > 0 ? "You need to log in to complete checkout." : undefined}
+              onClick={() => {
+                onClose?.();
+                navigate("/checkout");
+              }}
+              className="w-full rounded-full bg-slate-900 px-4 py-3.5 text-xs font-medium tracking-[0.2em] text-white uppercase transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Checkout
+            </button>
+          </div>
         </div>
       </aside>
     </>

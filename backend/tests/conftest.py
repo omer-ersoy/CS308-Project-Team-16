@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 from app.api.deps import get_db
 from app.core.security import create_access_token, hash_password
 from app.db.base import Base
-from app.db.models import Category, Product, ProductReview, User
+from app.db.models import Category, Order, OrderItem, Product, ProductReview, User
 from app.main import app
 
 
@@ -91,6 +91,29 @@ def sample_data(db_session: Session) -> dict[str, object]:
     )
     db_session.add(product)
     db_session.flush()
+
+    customer_order = Order(user_id=customer.id, status="delivered", total_amount=product.price)
+    other_customer_order = Order(user_id=other_customer.id, status="delivered", total_amount=product.price)
+    db_session.add_all([customer_order, other_customer_order])
+    db_session.flush()
+    db_session.add_all(
+        [
+            OrderItem(
+                order_id=customer_order.id,
+                product_id=product.id,
+                product_name=product.name,
+                quantity=1,
+                unit_price=product.price,
+            ),
+            OrderItem(
+                order_id=other_customer_order.id,
+                product_id=product.id,
+                product_name=product.name,
+                quantity=1,
+                unit_price=product.price,
+            ),
+        ]
+    )
 
     approved_review = ProductReview(
         product_id=product.id,

@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import emailjs from "@emailjs/browser";
+import { buildInvoicePdfDataUrl, enrichInvoiceItems } from "./lib/invoicePdf";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import CartDrawer from "./components/CartDrawer";
 import PageShell from "./components/PageShell";
@@ -26,17 +27,17 @@ function getCartItemCount(cart) {
 }
 
 function buildInvoiceText(invoice, productsByApiId) {
-  const itemLines = invoice.items
+  const itemLines = enrichInvoiceItems(invoice, productsByApiId)
     .map((item) => {
-      const product = productsByApiId.get(item.product_id);
-      const productName = product?.name ?? `Product #${item.product_id}`;
-      return `- ${productName} | Qty: ${item.quantity} | Unit: ${item.unit_price} USD | Line Total: ${item.line_total} USD`;
+      return `- ${item.product_name} | Qty: ${item.quantity} | Unit: ${item.unit_price} USD | Line Total: ${item.line_total} USD`;
     })
     .join("\n");
 
   return [
     `Order ID: ${invoice.order_id}`,
     `Database Order ID: ${invoice.db_order_id}`,
+    `Customer: ${invoice.customer_name ?? ""}`,
+    `Email: ${invoice.customer_email ?? ""}`,
     `Status: ${invoice.status}`,
     `Created At: ${invoice.created_at}`,
     `Item Count: ${invoice.item_count}`,
@@ -187,6 +188,14 @@ function AppContent() {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState("");
   const [sortOption, setSortOption] = useState("default");
+
+  // Initialize EmailJS
+  useEffect(() => {
+    const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+    if (publicKey) {
+      emailjs.init(publicKey);
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -393,7 +402,9 @@ function AppContent() {
 
   const sendInvoiceEmail = useCallback(
     async (invoice) => {
-      if (!currentUser?.email) return;
+      if (!currentUser?.email) {
+        return { sent: false, reason: "No user email address found." };
+      }
 
       const invoiceText = buildInvoiceText(invoice, productsByApiId);
       const orderItems = (invoice.items ?? []).map((item) => {
@@ -416,28 +427,26 @@ function AppContent() {
         order_id: invoice.order_id,
         total: invoice.total_amount,
         total_amount: `${invoice.total_amount} USD`,
-        message: invoiceText,
-        orders: orderItems,
-        item_names: orderItems.map((item) => item.name).join(", "),
-        item_prices: orderItems.map((item) => String(item.price)).join(", "),
-        invoice_text: invoiceText,
+        invoice_text: buildInvoiceText(invoice, productsByApiId),
+        invoice_pdf: buildInvoicePdfDataUrl(invoice, productsByApiId),
       };
 
       try {
         const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
         const templateId =
+          import.meta.env.VITE_EMAILJS_INVOICE_TEMPLATE_ID ??
           import.meta.env.VITE_EMAILJS_ORDER_TEMPLATE_ID ??
-          import.meta.env.VITE_EMAILJS_TEMPLATE_ID ??
-          "template_xtkn2jc";
+          import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
         const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
         if (!serviceId || !templateId || !publicKey) {
-          return;
+          return { sent: false, reason: "EmailJS is not configured in the frontend environment." };
         }
 
         await emailjs.send(serviceId, templateId, templateParams, { publicKey });
+        return { sent: true };
       } catch (error) {
-        console.error("Order email failed", error);
+        return { sent: false, reason: error?.message ?? "EmailJS send failed." };
       }
     },
     [currentUser, productsByApiId],
@@ -456,8 +465,12 @@ function AppContent() {
       const invoice = await api.checkoutCart(CART_ID, token);
       setCart(await api.getCart(CART_ID));
       setCatalogReloadKey((current) => current + 1);
-      setCheckoutMessage(`Checkout completed. Order ${invoice.order_id} created.`);
-      await sendInvoiceEmail(invoice);
+      const emailResult = await sendInvoiceEmail(invoice);
+      setCheckoutMessage(
+        emailResult.sent
+          ? `Checkout completed. Order ${invoice.order_id} created. Invoice email sent.`
+          : `Checkout completed. Order ${invoice.order_id} created. Invoice email was not sent: ${emailResult.reason}`,
+      );
       return invoice;
     } catch (error) {
       setCheckoutMessage(error.message);
@@ -557,6 +570,7 @@ function AppContent() {
                 onCheckout={handleCheckout}
                 isCheckingOut={isCheckingOut}
                 checkoutMessage={checkoutMessage}
+                products={products}
               />
             }
           />

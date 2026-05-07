@@ -146,6 +146,7 @@ def checkout_cart(
     invoice_items = [
         CheckoutInvoiceItem(
             product_id=item.product_id,
+            product_name=item.product.name,
             quantity=item.quantity,
             unit_price=item.unit_price,
             line_total=item.unit_price * item.quantity,
@@ -181,6 +182,8 @@ def checkout_cart(
     return CheckoutInvoiceRead(
         order_id=order_id,
         db_order_id=order.id,
+        customer_name=current_user.full_name,
+        customer_email=current_user.email,
         status=order.status,
         created_at=created_at,
         item_count=item_count,

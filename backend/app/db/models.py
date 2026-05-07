@@ -52,6 +52,16 @@ class Product(Base):
         cascade="all, delete-orphan",
     )
 
+    @property
+    def rating_count(self) -> int:
+        return len(self.reviews)
+
+    @property
+    def average_rating(self) -> float:
+        if not self.reviews:
+            return 0.0
+        return sum(review.rating for review in self.reviews) / len(self.reviews)
+
 
 class ProductReview(Base):
     __tablename__ = "product_reviews"

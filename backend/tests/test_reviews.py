@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
-from app.db.models import ProductReview, User
+from app.db.models import Order, OrderItem, ProductReview, User
 from tests.conftest import auth_headers
 
 
@@ -93,6 +93,19 @@ def test_review_create_strips_comment_whitespace(
         hashed_password=hash_password("password123"),
     )
     db_session.add(new_customer)
+    db_session.flush()
+    order = Order(user_id=new_customer.id, status="delivered", total_amount=product.price)
+    db_session.add(order)
+    db_session.flush()
+    db_session.add(
+        OrderItem(
+            order_id=order.id,
+            product_id=product.id,
+            product_name=product.name,
+            quantity=1,
+            unit_price=product.price,
+        )
+    )
     db_session.commit()
 
     response = client.post(
@@ -104,6 +117,31 @@ def test_review_create_strips_comment_whitespace(
     assert response.status_code == 201
     assert response.json()["comment"] == "Balanced and clean."
     assert response.json()["status"] == "pending"
+
+
+def test_review_create_requires_delivered_purchase(
+    client: TestClient,
+    db_session: Session,
+    sample_data: dict[str, object],
+) -> None:
+    product = sample_data["product"]
+    new_customer = User(
+        full_name="No Delivery Customer",
+        email="no-delivery@example.com",
+        role="customer",
+        hashed_password=hash_password("password123"),
+    )
+    db_session.add(new_customer)
+    db_session.commit()
+
+    response = client.post(
+        f"/api/products/{product.id}/reviews",
+        headers=auth_headers(new_customer),
+        json={"rating": 5, "comment": "I should not be able to review this yet."},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "You can review this product after it has been delivered to you."
 
 
 def test_review_update_resets_status_to_pending(
@@ -126,6 +164,28 @@ def test_review_update_resets_status_to_pending(
     db_session.refresh(review)
     assert review.status == "pending"
     assert review.comment == "Still good after another try."
+
+
+def test_review_rating_update_keeps_existing_comment_status(
+    client: TestClient,
+    db_session: Session,
+    sample_data: dict[str, object],
+) -> None:
+    product = sample_data["product"]
+    review = sample_data["approved_review"]
+    author = sample_data["other_customer"]
+
+    response = client.patch(
+        f"/api/products/{product.id}/reviews/{review.id}",
+        headers=auth_headers(author),
+        json={"rating": 4},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["rating"] == 4
+    assert response.json()["status"] == "approved"
+    db_session.refresh(review)
+    assert review.status == "approved"
 
 
 def test_non_author_cannot_update_review(client: TestClient, sample_data: dict[str, object]) -> None:
