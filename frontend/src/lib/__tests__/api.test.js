@@ -48,6 +48,38 @@ describe("api client", () => {
     });
   });
 
+  it("sends authenticated product review list requests with a bearer token", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(mockJsonResponse([]));
+
+    const result = await api.listProductReviews(3, "token-123");
+
+    expect(result).toEqual([]);
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/api/products/3/reviews", {
+      headers: {
+        Authorization: "Bearer token-123",
+      },
+      body: undefined,
+    });
+  });
+
+  it("sends review update requests as JSON", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(mockJsonResponse({ rating: 4 }));
+
+    await api.updateProductReview("token-123", 3, 11, {
+      rating: 4,
+      comment: "Still good",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/api/products/3/reviews/11", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer token-123",
+      },
+      body: JSON.stringify({ rating: 4, comment: "Still good" }),
+    });
+  });
+
   it("does not add a JSON content type for empty delete requests", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(mockJsonResponse(null, { status: 204 }));
 
@@ -69,5 +101,44 @@ describe("api client", () => {
     );
 
     await expect(api.listAdminUsers("customer-token")).rejects.toThrow("Admin access required");
+  });
+
+  it("uses a status fallback when the backend omits an error detail", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(mockJsonResponse({}, { ok: false, status: 500 }));
+
+    await expect(api.listProducts()).rejects.toThrow("Request failed with status 500");
+  });
+
+  it("sends admin review delete requests without a JSON content type", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(mockJsonResponse(null, { status: 204 }));
+
+    await api.deleteAdminReview("admin-token", 7);
+
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/api/admin/reviews/7", {
+      method: "DELETE",
+      headers: {
+        Authorization: "Bearer admin-token",
+      },
+      body: undefined,
+    });
+  });
+
+  it("sends registration payloads as JSON", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(mockJsonResponse({ id: 4 }));
+    const payload = {
+      full_name: "Fresh Customer",
+      email: "fresh@example.com",
+      password: "password123",
+    };
+
+    await api.register(payload);
+
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/api/auth/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
   });
 });
