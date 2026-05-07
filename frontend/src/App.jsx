@@ -217,7 +217,7 @@ function AdminRoute({ searchProps, cartCount, wishlistCount, onCartClick, onCata
 }
 
 function AppContent() {
-  const { token, currentUser } = useAuth();
+  const { token, currentUser, openAuth } = useAuth();
   const location = useLocation();
   const [products, setProducts] = useState([]);
   const [catalogReloadKey, setCatalogReloadKey] = useState(0);
@@ -376,6 +376,11 @@ function AppContent() {
     if (isCheckingOut) {
       return;
     }
+    if (!token) {
+      setCheckoutMessage("Please log in before checking out.");
+      openAuth("login");
+      return;
+    }
 
     setIsCheckingOut(true);
     setCheckoutMessage("Creating order...");
@@ -441,7 +446,7 @@ function AppContent() {
     } finally {
       setIsCheckingOut(false);
     }
-  }, [currentUser?.email, currentUser?.full_name, isCheckingOut, products, token]);
+  }, [currentUser?.email, currentUser?.full_name, isCheckingOut, openAuth, products, token]);
 
   const wishlistProductSet = useMemo(() => new Set(wishlistIds), [wishlistIds]);
 
