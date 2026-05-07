@@ -131,7 +131,7 @@ function ContactPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClic
             <article className="border border-slate-200 bg-[#f8faf9] px-7 py-7 shadow-sm">
               <p className="text-[11px] tracking-[0.24em] text-slate-400 uppercase">Email</p>
               <h2 className="mt-3 text-2xl font-light tracking-tight text-slate-800">
-                support@fragranceshop.example
+                fragranceshopcs308@gmail.com
               </h2>
               <p className="mt-3 text-sm leading-7 text-slate-600">
                 Include your order reference if you have one and a short summary. Replace this
