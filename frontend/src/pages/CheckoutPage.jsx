@@ -35,8 +35,10 @@ function CheckoutPage({
   const handleMockPayment = async () => {
     setError("");
 
-    if (!cardName.trim() || !cardNumber.trim() || !expiry.trim() || !cvv.trim()) {
-      setError("Please fill in all payment fields.");
+    const paymentFields = [cardName, cardNumber, expiry, cvv];
+
+    if (paymentFields.some((field) => field.trim().length < 3)) {
+      setError("Please enter at least 3 characters in each payment field.");
       return;
     }
 
@@ -115,6 +117,8 @@ function CheckoutPage({
                       type="text"
                       value={cardName}
                       onChange={(e) => setCardName(e.target.value)}
+                      minLength={3}
+                      required
                       className="w-full border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
                       placeholder="John Doe"
                     />
@@ -128,6 +132,8 @@ function CheckoutPage({
                       type="text"
                       value={cardNumber}
                       onChange={(e) => setCardNumber(e.target.value)}
+                      minLength={3}
+                      required
                       className="w-full border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
                       placeholder="1111 2222 3333 4444"
                     />
@@ -142,6 +148,8 @@ function CheckoutPage({
                         type="text"
                         value={expiry}
                         onChange={(e) => setExpiry(e.target.value)}
+                        minLength={3}
+                        required
                         className="w-full border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
                         placeholder="MM/YY"
                       />
@@ -155,6 +163,8 @@ function CheckoutPage({
                         type="text"
                         value={cvv}
                         onChange={(e) => setCvv(e.target.value)}
+                        minLength={3}
+                        required
                         className="w-full border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
                         placeholder="123"
                       />
