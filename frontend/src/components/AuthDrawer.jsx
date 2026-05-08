@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 function PasswordToggle({ shown, onToggle }) {
@@ -24,6 +25,7 @@ function PasswordToggle({ shown, onToggle }) {
 }
 
 function AuthDrawer() {
+  const navigate = useNavigate();
   const {
     authOpen,
     authTab,
@@ -78,6 +80,11 @@ function AuthDrawer() {
   const selectAuthTab = (tab) => {
     setAuthError("");
     setAuthTab(tab);
+  };
+
+  const openBoughtProductStatus = () => {
+    closeAuth();
+    navigate("/order-status");
   };
 
   useEffect(() => {
@@ -150,6 +157,13 @@ function AuthDrawer() {
               <p className="text-lg text-slate-700">
                 Signed in as {currentUser?.full_name ?? currentUser?.email ?? "customer"}.
               </p>
+              <button
+                type="button"
+                onClick={openBoughtProductStatus}
+                className="w-full border border-slate-900 bg-slate-900 px-4 py-3 text-xs font-medium tracking-[0.2em] text-white uppercase transition hover:bg-slate-700"
+              >
+                Bought Product Status
+              </button>
               <button
                 type="button"
                 onClick={logout}

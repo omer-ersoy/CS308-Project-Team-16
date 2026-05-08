@@ -16,6 +16,7 @@ import WishlistPage from "./pages/WishlistPage";
 import SalesManagerPage from "./pages/SalesManagerPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import OrdersPage from "./pages/OrdersPage";
+import BoughtProductStatusPage from "./pages/BoughtProductStatusPage";
 import { api } from "./lib/api";
 import { adaptProduct } from "./lib/productAdapter";
 
@@ -788,6 +789,17 @@ function AppContent() {
             }
           />
           <Route
+            path="/order-status"
+            element={
+              <BoughtProductStatusPage
+                searchProps={searchProps}
+                cartCount={cartCount}
+                wishlistCount={wishlistCount}
+                onCartClick={() => setCartOpen(true)}
+              />
+            }
+          />
+          <Route
             path="/product/:productId"
             element={
               <ProductRoute
@@ -834,11 +846,11 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
         <AppContent />
-      </BrowserRouter>
-    </AuthProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
