@@ -80,6 +80,8 @@ function ProductPage({
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewMessage, setReviewMessage] = useState("");
   const [reviewError, setReviewError] = useState("");
+  const [deliveredProductIds, setDeliveredProductIds] = useState(new Set());
+  const [ordersLoading, setOrdersLoading] = useState(false);
 
   const refreshReviews = useCallback(async () => {
     const nextReviews = await api.listProductReviews(product.apiId, token);
@@ -126,6 +128,49 @@ function ProductPage({
     };
   }, [product.apiId, token]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!isLoggedIn || !token) {
+      setDeliveredProductIds(new Set());
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    setOrdersLoading(true);
+    api
+      .getMyOrders(token)
+      .then((orders) => {
+        if (!isMounted) return;
+        const deliveredIds = new Set();
+        orders
+          .filter((order) => order.status === "delivered")
+          .forEach((order) => {
+            (order.items ?? []).forEach((item) => {
+              if (item.product_id != null) {
+                deliveredIds.add(Number(item.product_id));
+              }
+            });
+          });
+        setDeliveredProductIds(deliveredIds);
+      })
+      .catch(() => {
+        if (isMounted) {
+          setDeliveredProductIds(new Set());
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setOrdersLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isLoggedIn, token]);
+
   const ownReview = useMemo(() => {
     if (!currentUser) {
       return null;
@@ -138,6 +183,9 @@ function ProductPage({
     () => reviews.filter((review) => review.status === "approved"),
     [reviews],
   );
+  const ratingReviews = useMemo(() => (reviews.length > 0 ? reviews : []), [reviews]);
+  const canReviewDeliveredProduct =
+    currentUser?.role === "admin" || deliveredProductIds.has(Number(product.apiId));
 
   useEffect(() => {
     if (ownReview) {
@@ -150,13 +198,13 @@ function ProductPage({
   }, [ownReview, product.apiId]);
 
   const averageRating = useMemo(() => {
-    if (approvedReviews.length === 0) {
-      return 0;
+    if (ratingReviews.length > 0) {
+      const total = ratingReviews.reduce((sum, review) => sum + review.rating, 0);
+      return total / ratingReviews.length;
     }
 
-    const total = approvedReviews.reduce((sum, review) => sum + review.rating, 0);
-    return total / approvedReviews.length;
-  }, [approvedReviews]);
+    return product.averageRating ?? 0;
+  }, [product.averageRating, ratingReviews]);
 
   const decreaseQuantity = () => setQuantity((current) => Math.max(1, current - 1));
   const stockCount = product.stock ?? 0;
@@ -164,7 +212,8 @@ function ProductPage({
     setQuantity((current) => Math.min(stockCount || 1, current + 1));
   const thumbnails = product.thumbnails ?? [];
   const totalPrice = product.price * quantity;
-  const reviewCountLabel = `${approvedReviews.length} review${approvedReviews.length === 1 ? "" : "s"}`;
+  const ratingCount = ratingReviews.length || product.ratingCount || 0;
+  const ratingCountLabel = `${ratingCount} rating${ratingCount === 1 ? "" : "s"}`;
 
   const handleAddToCart = async () => {
     if (!onAddToCart) {
@@ -201,17 +250,24 @@ function ProductPage({
     try {
       const payload = {
         rating: reviewRating,
-        comment: reviewComment,
       };
 
       if (ownReview) {
+        if (reviewComment !== ownReview.comment) {
+          payload.comment = reviewComment;
+        }
         await api.updateProductReview(token, product.apiId, ownReview.id, payload);
       } else {
+        payload.comment = reviewComment;
         await api.createProductReview(token, product.apiId, payload);
       }
 
       await refreshReviews();
-      setReviewMessage(ownReview ? "Review updated and sent for approval." : "Review submitted for approval.");
+      const hasComment = reviewComment.trim().length > 0;
+      const commentChanged = !ownReview || reviewComment !== ownReview.comment;
+      setReviewMessage(
+        hasComment && commentChanged ? "Rating saved. Comment submitted for approval." : "Rating saved.",
+      );
     } catch (error) {
       setReviewError(error.message);
     } finally {
@@ -295,7 +351,7 @@ function ProductPage({
               </p>
               <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-slate-500">
                 <RatingStars rating={averageRating} />
-                <span>{reviews.length > 0 ? `${averageRating.toFixed(1)} (${reviewCountLabel})` : "No reviews yet"}</span>
+                <span>{ratingCount > 0 ? `${averageRating.toFixed(1)} (${ratingCountLabel})` : "No ratings yet"}</span>
               </div>
 
               <p className="mt-8 text-lg leading-relaxed text-slate-600">{product.shortDescription}</p>
@@ -406,11 +462,11 @@ function ProductPage({
             <div>
               <p className="text-[11px] tracking-[0.3em] text-slate-500 uppercase">Customer reviews</p>
               <h2 className="mt-3 text-3xl font-light tracking-tight text-slate-800">
-                {approvedReviews.length > 0 ? `${averageRating.toFixed(1)} out of 5` : "No ratings yet"}
+                {ratingCount > 0 ? `${averageRating.toFixed(1)} out of 5` : "No ratings yet"}
               </h2>
               <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-500">
                 <RatingStars rating={averageRating} />
-                <span>{reviewCountLabel}</span>
+                <span>{ratingCountLabel}</span>
               </div>
 
               <form className="mt-8 border border-slate-200 bg-slate-50 p-5" onSubmit={handleReviewSubmit}>
@@ -425,25 +481,33 @@ function ProductPage({
 
                 {isLoggedIn ? (
                   <>
+                    {!canReviewDeliveredProduct && (
+                      <div className="mt-5 border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+                        You can rate and comment on this product after your order is delivered.
+                      </div>
+                    )}
                     <div className="mt-5">
                       <RatingStars rating={reviewRating} interactive onChange={setReviewRating} />
                     </div>
                     <textarea
                       value={reviewComment}
                       onChange={(event) => setReviewComment(event.target.value)}
-                      placeholder="Share your thoughts about this perfume"
+                      placeholder="Share your thoughts about this perfume (optional)"
                       rows="5"
                       maxLength="2000"
                       className="mt-5 w-full border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
-                      required
                     />
                     <div className="mt-4 flex flex-wrap gap-3">
                       <button
                         type="submit"
-                        disabled={reviewSubmitting}
+                        disabled={reviewSubmitting || ordersLoading || !canReviewDeliveredProduct}
                         className="rounded-full bg-slate-900 px-5 py-3 text-xs tracking-[0.2em] text-white uppercase disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {reviewSubmitting ? "Saving" : ownReview ? "Update review" : "Submit for approval"}
+                        {reviewSubmitting
+                          ? "Saving"
+                          : ownReview
+                            ? "Save rating"
+                            : "Save rating"}
                       </button>
                       {ownReview && (
                         <button
@@ -505,7 +569,9 @@ function ProductPage({
                       </div>
                       <RatingStars rating={review.rating} />
                     </div>
-                    <p className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-600">{review.comment}</p>
+                    {review.comment.trim() ? (
+                      <p className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-600">{review.comment}</p>
+                    ) : null}
                   </article>
                 ))
               )}

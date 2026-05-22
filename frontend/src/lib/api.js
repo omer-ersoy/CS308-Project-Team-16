@@ -33,8 +33,13 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  listProducts() {
-    return request("/products");
+  listProducts(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.categoryId) {
+      searchParams.set("category_id", String(params.categoryId));
+    }
+    const queryString = searchParams.toString();
+    return request(`/products${queryString ? `?${queryString}` : ""}`);
   },
 
   listProductReviews(productId, token) {
@@ -87,6 +92,13 @@ export const api = {
   removeCartItem(cartId, itemId) {
     return request(`/carts/${cartId}/items/${itemId}`, {
       method: "DELETE",
+    });
+  },
+
+  checkoutCart(cartId, token) {
+    return request(`/carts/${cartId}/checkout`, {
+        method: "POST",
+        token,
     });
   },
 
@@ -203,6 +215,22 @@ export const api = {
     return request(`/admin/reviews/${reviewId}`, {
       method: "DELETE",
       token,
+    });
+  },
+
+  getMyOrders(token) {
+    return request("/orders/mine", { token });
+  },
+
+  listAdminOrders(token) {
+    return request("/admin/orders", { token });
+  },
+
+  updateAdminOrderStatus(token, orderId, newStatus) {
+    return request(`/admin/orders/${orderId}/status`, {
+      method: "PATCH",
+      token,
+      body: { status: newStatus },
     });
   },
 };

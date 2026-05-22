@@ -24,7 +24,7 @@ def ensure_user(
 ) -> User:
     user = db.scalar(select(User).where(User.email == email.lower()))
     if user is not None:
-      return user
+        return user
 
     user = User(
         full_name=full_name,
@@ -108,6 +108,20 @@ def seed_database(db: Session) -> None:
         email=settings.seed_admin_email,
         role="admin",
         password=settings.seed_admin_password,
+    )
+    ensure_user(
+        db,
+        full_name="Sales Manager",
+        email="sales.manager@example.com",
+        role="sales_manager",
+        password="password123",
+    )
+    ensure_user(
+        db,
+        full_name="Product Manager",
+        email="product.manager@example.com",
+        role="product_manager",
+        password="password123",
     )
 
     ensure_category(

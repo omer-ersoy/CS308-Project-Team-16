@@ -11,11 +11,17 @@ from app.db.base import Base
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('customer', 'sales_manager', 'product_manager', 'admin')",
+            name="ck_users_role",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     full_name: Mapped[str] = mapped_column(String(255))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    role: Mapped[str] = mapped_column(String(32), default="customer")
+    role: Mapped[str] = mapped_column(String(32), default="customer", server_default="customer")
     hashed_password: Mapped[str] = mapped_column(String(255))
 
     reviews: Mapped[list["ProductReview"]] = relationship(back_populates="user")
@@ -51,6 +57,16 @@ class Product(Base):
         back_populates="product",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def rating_count(self) -> int:
+        return len(self.reviews)
+
+    @property
+    def average_rating(self) -> float:
+        if not self.reviews:
+            return 0.0
+        return sum(review.rating for review in self.reviews) / len(self.reviews)
 
 
 class ProductReview(Base):
@@ -104,3 +120,31 @@ class CartItem(Base):
 
     cart: Mapped["Cart"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship(back_populates="cart_items")
+
+
+class Order(Base):
+    __tablename__ = "orders"
+    __table_args__ = (
+        CheckConstraint("status IN ('processing', 'in-transit', 'delivered')", name="ck_orders_status"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="processing", server_default="processing")
+    total_amount: Mapped[Decimal] = mapped_column(DECIMAL(10, 2))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    items: Mapped[list["OrderItem"]] = relationship(back_populates="order", cascade="all, delete-orphan")
+
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"))
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
+    product_name: Mapped[str] = mapped_column(String(255))
+    quantity: Mapped[int] = mapped_column(Integer)
+    unit_price: Mapped[Decimal] = mapped_column(DECIMAL(10, 2))
+
+    order: Mapped["Order"] = relationship(back_populates="items")

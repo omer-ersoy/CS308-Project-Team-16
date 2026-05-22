@@ -8,15 +8,12 @@ ReviewStatus = Literal["pending", "approved", "rejected"]
 
 class ProductReviewBase(BaseModel):
     rating: int = Field(ge=1, le=5)
-    comment: str = Field(min_length=1, max_length=2000)
+    comment: str = Field(default="", max_length=2000)
 
     @field_validator("comment")
     @classmethod
     def strip_comment(cls, value: str) -> str:
-        stripped = value.strip()
-        if not stripped:
-            raise ValueError("Comment cannot be empty")
-        return stripped
+        return value.strip()
 
 
 class ProductReviewCreate(ProductReviewBase):
@@ -25,7 +22,7 @@ class ProductReviewCreate(ProductReviewBase):
 
 class ProductReviewUpdate(BaseModel):
     rating: int | None = Field(default=None, ge=1, le=5)
-    comment: str | None = Field(default=None, min_length=1, max_length=2000)
+    comment: str | None = Field(default=None, max_length=2000)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -35,10 +32,7 @@ class ProductReviewUpdate(BaseModel):
         if value is None:
             return value
 
-        stripped = value.strip()
-        if not stripped:
-            raise ValueError("Comment cannot be empty")
-        return stripped
+        return value.strip()
 
 
 class ProductReviewAdminUpdate(ProductReviewUpdate):

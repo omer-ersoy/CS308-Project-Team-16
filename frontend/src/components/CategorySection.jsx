@@ -1,30 +1,10 @@
-import { useNavigate } from "react-router-dom";
-
-const CATEGORIES = [
-  {
-    label: "Men's",
-    description: "Woody, spicy & fresh",
-    query: "?gender=men",
-  },
-  {
-    label: "Women's",
-    description: "Floral, fruity & oriental",
-    query: "?gender=women",
-  },
-  {
-    label: "Gift Sets",
-    description: "Curated for every occasion",
-    query: "?type=gifts",
-  },
-  {
-    label: "New Arrivals",
-    description: "The latest additions",
-    query: "?type=new",
-  },
-];
-
-function CategorySection() {
-  const navigate = useNavigate();
+function CategorySection({
+  categories = [],
+  selectedCategoryId = "",
+  onCategorySelect,
+  onClearCategory,
+}) {
+  const hasSelectedCategory = Boolean(selectedCategoryId);
 
   return (
     <section
@@ -41,34 +21,68 @@ function CategorySection() {
               Start from a mood, not just a menu.
             </h2>
           </div>
-          <p className="max-w-md text-sm leading-7 text-slate-600">
-            Use collections as shortcuts into the catalog when you know the kind of presence you
-            want, but not yet the exact bottle.
-          </p>
-        </div>
-        <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {CATEGORIES.map(({ label, description, query }) => (
+          {hasSelectedCategory && (
             <button
-              key={label}
               type="button"
-              onClick={() => navigate(`/collections${query}`)}
-              className="group animate-rise-soft relative overflow-hidden border border-slate-200/90 bg-white/80 px-6 py-6 text-left shadow-[0_24px_45px_-38px_rgba(15,23,42,0.45)] transition hover:-translate-y-1 hover:border-slate-300 hover:bg-white"
+              onClick={onClearCategory}
+              className="rounded-full border border-slate-300 bg-white px-5 py-3 text-[11px] tracking-[0.22em] text-slate-600 uppercase transition hover:border-slate-500 hover:text-slate-900"
             >
-              <span className="absolute -right-6 -top-8 h-24 w-24 rounded-full bg-slate-100 transition group-hover:bg-[#f3ede4]" />
-              <span className="sans-ui relative text-[10px] tracking-[0.26em] text-slate-400 uppercase">
-                Collection
-              </span>
-              <span className="relative mt-4 text-xl font-light tracking-tight text-slate-800 group-hover:text-slate-950">
-                {label}
-              </span>
-              <span className="relative mt-3 text-sm leading-7 text-slate-500">
-                {description}
-              </span>
-              <span className="sans-ui relative mt-6 text-[11px] tracking-[0.22em] text-slate-500 uppercase">
-                View selection
-              </span>
+              Clear category
             </button>
-          ))}
+          )}
+        </div>
+
+        <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {categories.map((category) => {
+            const categoryId = String(category.id);
+            const isSelected = selectedCategoryId === categoryId;
+
+            return (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => onCategorySelect?.(categoryId)}
+                className={`group animate-rise-soft relative overflow-hidden border px-6 py-6 text-left shadow-[0_24px_45px_-38px_rgba(15,23,42,0.45)] transition hover:-translate-y-1 ${
+                  isSelected
+                    ? "border-slate-800 bg-slate-900 text-white"
+                    : "border-slate-200/90 bg-white/80 hover:border-slate-300 hover:bg-white"
+                }`}
+                aria-pressed={isSelected}
+              >
+                <span
+                  className={`absolute -right-6 -top-8 h-24 w-24 rounded-full transition ${
+                    isSelected ? "bg-white/10" : "bg-slate-100 group-hover:bg-[#f3ede4]"
+                  }`}
+                />
+                <span
+                  className={`sans-ui relative text-[10px] tracking-[0.26em] uppercase ${
+                    isSelected ? "text-slate-300" : "text-slate-400"
+                  }`}
+                >
+                  Category
+                </span>
+                <span className="relative mt-4 text-xl font-light tracking-tight">
+                  {category.name}
+                </span>
+                {category.description && (
+                  <span
+                    className={`relative mt-3 text-sm leading-7 ${
+                      isSelected ? "text-slate-300" : "text-slate-500"
+                    }`}
+                  >
+                    {category.description}
+                  </span>
+                )}
+                <span
+                  className={`sans-ui relative mt-6 text-[11px] tracking-[0.22em] uppercase ${
+                    isSelected ? "text-white" : "text-slate-500"
+                  }`}
+                >
+                  {isSelected ? "Selected" : "View selection"}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </section>

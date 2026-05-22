@@ -24,3 +24,23 @@ class CartRead(BaseModel):
     total_amount: Decimal
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CheckoutInvoiceItem(BaseModel):
+    product_id: int
+    product_name: str
+    quantity: int
+    unit_price: Decimal
+    line_total: Decimal
+
+
+class CheckoutInvoiceRead(BaseModel):
+    order_id: str
+    db_order_id: int
+    customer_name: str
+    customer_email: str
+    status: str
+    created_at: str
+    item_count: int
+    total_amount: Decimal
+    items: list[CheckoutInvoiceItem]
