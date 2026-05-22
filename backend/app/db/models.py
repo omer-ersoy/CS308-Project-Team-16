@@ -11,11 +11,17 @@ from app.db.base import Base
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('customer', 'sales_manager', 'product_manager', 'admin')",
+            name="ck_users_role",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     full_name: Mapped[str] = mapped_column(String(255))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    role: Mapped[str] = mapped_column(String(32), default="customer")
+    role: Mapped[str] = mapped_column(String(32), default="customer", server_default="customer")
     hashed_password: Mapped[str] = mapped_column(String(255))
 
     reviews: Mapped[list["ProductReview"]] = relationship(back_populates="user")

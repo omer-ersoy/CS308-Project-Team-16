@@ -816,6 +816,17 @@ function AppContent() {
             }
           />
           <Route
+            path="/checkout"
+            element={
+              <CheckoutPage
+                searchProps={searchProps}
+                cartCount={cartCount}
+                wishlistCount={wishlistCount}
+                onCartClick={() => setCartOpen(true)}
+              />
+            }
+          />
+          <Route
             path="/admin"
             element={
               <AdminRoute
