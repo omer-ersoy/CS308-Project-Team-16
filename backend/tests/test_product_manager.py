@@ -146,3 +146,54 @@ def test_product_manager_product_update_rejects_stock_changes(
     )
 
     assert response.status_code == 422
+
+
+def test_product_manager_can_update_stock(
+    client: TestClient,
+    db_session: Session,
+    sample_data: dict[str, object],
+) -> None:
+    manager = create_product_manager(db_session)
+    product = sample_data["product"]
+
+    response = client.patch(
+        f"/api/product-manager/products/{product.id}/stock",
+        json={"quantity_in_stock": 24},
+        headers=auth_headers(manager),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["quantity_in_stock"] == 24
+
+
+def test_customer_cannot_update_stock(
+    client: TestClient,
+    sample_data: dict[str, object],
+) -> None:
+    customer = sample_data["customer"]
+    product = sample_data["product"]
+
+    response = client.patch(
+        f"/api/product-manager/products/{product.id}/stock",
+        json={"quantity_in_stock": 24},
+        headers=auth_headers(customer),
+    )
+
+    assert response.status_code == 403
+
+
+def test_stock_cannot_be_negative(
+    client: TestClient,
+    db_session: Session,
+    sample_data: dict[str, object],
+) -> None:
+    manager = create_product_manager(db_session)
+    product = sample_data["product"]
+
+    response = client.patch(
+        f"/api/product-manager/products/{product.id}/stock",
+        json={"quantity_in_stock": -1},
+        headers=auth_headers(manager),
+    )
+
+    assert response.status_code == 422

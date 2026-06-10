@@ -62,6 +62,12 @@ class ProductPriceUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class ProductStockUpdate(BaseModel):
+    quantity_in_stock: int = Field(ge=0)
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class ProductDiscountApply(BaseModel):
     product_ids: list[int] = Field(min_length=1)
     discount_rate: Decimal = Field(gt=0, lt=100)

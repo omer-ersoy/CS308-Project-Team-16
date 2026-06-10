@@ -8,7 +8,12 @@ from app.api.deps import get_product_manager_user
 from app.db.models import Category, Product
 from app.db.session import get_db
 from app.schemas.category import CategoryCreate, CategoryRead
-from app.schemas.product import ProductCreate, ProductManagerProductUpdate, ProductRead
+from app.schemas.product import (
+    ProductCreate,
+    ProductManagerProductUpdate,
+    ProductRead,
+    ProductStockUpdate,
+)
 from app.schemas.user import UserRead
 
 
@@ -152,6 +157,20 @@ def update_product(
         setattr(product, field, value)
 
     return commit_product(db, product)
+
+
+@router.patch("/products/{product_id}/stock", response_model=ProductRead)
+def update_product_stock(
+    product_id: int,
+    payload: ProductStockUpdate,
+    _: UserRead = Depends(get_product_manager_user),
+    db: Session = Depends(get_db),
+) -> Product:
+    product = require_product(db, product_id)
+    product.quantity_in_stock = payload.quantity_in_stock
+    db.commit()
+    db.refresh(product)
+    return product
 
 
 @router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
