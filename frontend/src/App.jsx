@@ -5,6 +5,7 @@ import { buildInvoicePdfDataUrl, enrichInvoiceItems } from "./lib/invoicePdf";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import CartDrawer from "./components/CartDrawer";
 import PageShell from "./components/PageShell";
+import ProtectedRoute from "./components/ProtectedRoute";
 import ProductPage from "./pages/ProductPage";
 import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
@@ -267,20 +268,50 @@ function SearchEmptyLayout({ searchProps, searchValue, cartCount, wishlistCount,
 }
 
 function AdminRoute({ searchProps, cartCount, wishlistCount, onCartClick, onCatalogChange }) {
-  const { isLoggedIn, isAdmin } = useAuth();
-
-  if (!isLoggedIn || !isAdmin) {
-    return <Navigate to="/" replace />;
-  }
-
   return (
-    <AdminPage
-      searchProps={searchProps}
-      cartCount={cartCount}
-      wishlistCount={wishlistCount}
-      onCartClick={onCartClick}
-      onCatalogChange={onCatalogChange}
-    />
+    <ProtectedRoute allowedRoles={["admin"]}>
+      <AdminPage
+        searchProps={searchProps}
+        cartCount={cartCount}
+        wishlistCount={wishlistCount}
+        onCartClick={onCartClick}
+        onCatalogChange={onCatalogChange}
+      />
+    </ProtectedRoute>
+  );
+}
+
+function SalesManagerRoute() {
+  return (
+    <ProtectedRoute allowedRoles={["sales_manager", "admin"]}>
+      <SalesManagerPage />
+    </ProtectedRoute>
+  );
+}
+
+function OrdersRoute({ searchProps, cartCount, wishlistCount, onCartClick }) {
+  return (
+    <ProtectedRoute requireAuth>
+      <OrdersPage
+        searchProps={searchProps}
+        cartCount={cartCount}
+        wishlistCount={wishlistCount}
+        onCartClick={onCartClick}
+      />
+    </ProtectedRoute>
+  );
+}
+
+function OrderStatusRoute({ searchProps, cartCount, wishlistCount, onCartClick }) {
+  return (
+    <ProtectedRoute requireAuth>
+      <BoughtProductStatusPage
+        searchProps={searchProps}
+        cartCount={cartCount}
+        wishlistCount={wishlistCount}
+        onCartClick={onCartClick}
+      />
+    </ProtectedRoute>
   );
 }
 
@@ -303,7 +334,6 @@ function AppContent() {
   const [checkoutMessage, setCheckoutMessage] = useState("");
   const [sortOption, setSortOption] = useState("default");
 
-  // Initialize EmailJS
   useEffect(() => {
     const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
     if (publicKey) {
@@ -699,7 +729,6 @@ function AppContent() {
                 sortOption={sortOption}
                 onSortChange={setSortOption}
               />
-
             }
           />
           <Route
@@ -780,7 +809,7 @@ function AppContent() {
           <Route
             path="/orders"
             element={
-              <OrdersPage
+              <OrdersRoute
                 searchProps={searchProps}
                 cartCount={cartCount}
                 wishlistCount={wishlistCount}
@@ -791,7 +820,7 @@ function AppContent() {
           <Route
             path="/order-status"
             element={
-              <BoughtProductStatusPage
+              <OrderStatusRoute
                 searchProps={searchProps}
                 cartCount={cartCount}
                 wishlistCount={wishlistCount}
@@ -838,7 +867,7 @@ function AppContent() {
               />
             }
           />
-          <Route path="/sales-manager" element={<SalesManagerPage />} />
+          <Route path="/sales-manager" element={<SalesManagerRoute />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       )}
