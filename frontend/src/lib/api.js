@@ -50,6 +50,17 @@ export const api = {
     });
   },
 
+  applyProductDiscount(token, productIds, discountRate) {
+    return request("/products/discounts", {
+      method: "PATCH",
+      token,
+      body: {
+        product_ids: productIds,
+        discount_rate: discountRate,
+      },
+    });
+  },
+
   listProductReviews(productId, token) {
     return request(`/products/${productId}/reviews`, {
       token,

@@ -154,4 +154,22 @@ describe("api client", () => {
       body: undefined,
     });
   });
+
+  it("sends bulk product discount requests as a sales manager", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(mockJsonResponse({ updated_products: [] }));
+
+    await api.applyProductDiscount("manager-token", [1, 3], 20);
+
+    expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/products/discounts`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer manager-token",
+      },
+      body: JSON.stringify({
+        product_ids: [1, 3],
+        discount_rate: 20,
+      }),
+    });
+  });
 });

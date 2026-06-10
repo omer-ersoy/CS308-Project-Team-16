@@ -97,6 +97,16 @@ function SalesManagerPage() {
     }
   }
 
+  function handleProductsUpdated(updatedProducts) {
+    const productsById = new Map(
+      updatedProducts.map((product) => [product.id, product]),
+    );
+
+    setProducts((currentProducts) =>
+      currentProducts.map((product) => productsById.get(product.id) ?? product),
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 px-6 py-10 sm:px-10 lg:px-14">
       <div className="mx-auto max-w-6xl space-y-10">
@@ -225,7 +235,13 @@ function SalesManagerPage() {
           )}
         </section>
 
-        <DiscountManager recipientEmail={currentUser?.email ?? ""} />
+        <DiscountManager
+          products={products}
+          loading={productsLoading}
+          error={productsError}
+          token={token}
+          onProductsUpdated={handleProductsUpdated}
+        />
         <InvoiceTable />
         <SalesAnalytics />
       </div>

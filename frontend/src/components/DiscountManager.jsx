@@ -1,78 +1,109 @@
 import { useMemo, useState } from "react";
-import emailjs from "@emailjs/browser";
+import { api } from "../lib/api";
 
-const sampleProducts = [
-  { id: "p1", name: "Bleu de Chanel", price: 210, currency: "USD" },
-  { id: "p2", name: "Dior Sauvage", price: 180, currency: "USD" },
-  { id: "p3", name: "YSL Libre", price: 165, currency: "USD" },
-];
+function money(value) {
+  return `${Number(value ?? 0).toFixed(2)} USD`;
+}
 
-function DiscountManager({ recipientEmail = "" }) {
-  const [selectedProductId, setSelectedProductId] = useState(sampleProducts[0].id);
-  const [discountRate, setDiscountRate] = useState(10);
-  const [sending, setSending] = useState(false);
+function calculateDiscountedPrice(price, discountRate) {
+  const numericPrice = Number(price);
+  const numericRate = Number(discountRate);
+
+  if (!Number.isFinite(numericPrice) || !Number.isFinite(numericRate)) {
+    return 0;
+  }
+
+  return Math.max(numericPrice * (1 - numericRate / 100), 0.01);
+}
+
+function DiscountManager({
+  products = [],
+  loading = false,
+  error = "",
+  token = "",
+  onProductsUpdated = () => {},
+}) {
+  const [selectedProductIds, setSelectedProductIds] = useState([]);
+  const [discountRate, setDiscountRate] = useState("10");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const [appliedDiscounts, setAppliedDiscounts] = useState([]);
 
-  const selectedProduct = useMemo(
-    () => sampleProducts.find((product) => product.id === selectedProductId),
-    [selectedProductId]
+  const selectedProducts = useMemo(() => {
+    const selectedIds = new Set(selectedProductIds);
+    return products.filter((product) => selectedIds.has(product.id));
+  }, [products, selectedProductIds]);
+
+  const discountPreview = useMemo(
+    () =>
+      selectedProducts.map((product) => ({
+        ...product,
+        discountedPrice: calculateDiscountedPrice(product.price, discountRate),
+      })),
+    [selectedProducts, discountRate],
   );
 
-  const discountedPrice = useMemo(() => {
-    if (!selectedProduct) return 0;
-    const rate = Number(discountRate) || 0;
-    return (selectedProduct.price * (1 - rate / 100)).toFixed(2);
-  }, [selectedProduct, discountRate]);
+  const allProductsSelected = products.length > 0 && selectedProductIds.length === products.length;
+  const numericDiscountRate = Number(discountRate);
+  const hasValidDiscountRate =
+    Number.isFinite(numericDiscountRate) && numericDiscountRate > 0 && numericDiscountRate < 100;
 
-  const handleApplyDiscount = async () => {
-    const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-    const templateId = import.meta.env.VITE_EMAILJS_WISHLIST_TEMPLATE_ID;
-    const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+  function toggleProduct(productId) {
+    setAppliedDiscounts([]);
+    setMessage("");
+    setSelectedProductIds((currentIds) =>
+      currentIds.includes(productId)
+        ? currentIds.filter((id) => id !== productId)
+        : [...currentIds, productId],
+    );
+  }
 
-    if (!serviceId || !templateId || !publicKey) {
-      setMessage("EmailJS is not configured. Set service/wishlist template/public key in frontend .env.");
+  function toggleAllProducts() {
+    setAppliedDiscounts([]);
+    setMessage("");
+    setSelectedProductIds(allProductsSelected ? [] : products.map((product) => product.id));
+  }
+
+  async function handleApplyDiscount(event) {
+    event.preventDefault();
+    setMessage("");
+    setAppliedDiscounts([]);
+
+    if (!token) {
+      setMessage("Please sign in as a sales manager to apply discounts.");
       return;
     }
 
-    if (!selectedProduct) {
-      setMessage("Please select a product first.");
+    if (selectedProductIds.length === 0) {
+      setMessage("Please select at least one product.");
       return;
     }
 
-    if (!recipientEmail) {
-      setMessage("No logged-in user email found. Please sign in and try again.");
+    if (!hasValidDiscountRate) {
+      setMessage("Enter a discount rate greater than 0 and less than 100.");
       return;
     }
 
-    const productLabel = selectedProduct.name;
-    const oldPrice = `${selectedProduct.price} ${selectedProduct.currency}`;
-    const newPrice = `${discountedPrice} ${selectedProduct.currency}`;
-    const discountText = `${discountRate}%`;
+    setIsSubmitting(true);
 
-    setSending(true);
-    setMessage("Sending wishlist discount emails...");
     try {
-      await emailjs.send(
-        serviceId,
-        templateId,
-        {
-          from_name: "FragranceShop",
-          reply_to: recipientEmail,
-          message: `${productLabel} is now discounted by ${discountText}. Price dropped from ${oldPrice} to ${newPrice}.`,
-          product_name: productLabel,
-          discount_rate: discountText,
-          previous_price: oldPrice,
-          discounted_price: newPrice,
-        },
-        { publicKey },
+      const response = await api.applyProductDiscount(
+        token,
+        selectedProductIds,
+        numericDiscountRate,
       );
-      setMessage(`Discount applied. Wishlist email sent to ${recipientEmail}.`);
-    } catch {
-      setMessage("Discount applied, but email sending failed. Verify EmailJS template variables.");
+      const updatedDiscounts = response.updated_products ?? [];
+
+      onProductsUpdated(updatedDiscounts.map((item) => item.product));
+      setAppliedDiscounts(updatedDiscounts);
+      setSelectedProductIds([]);
+      setMessage(`Applied ${numericDiscountRate}% discount to ${updatedDiscounts.length} product(s).`);
+    } catch (requestError) {
+      setMessage(requestError.message);
     } finally {
-      setSending(false);
+      setIsSubmitting(false);
     }
-  };
+  }
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -81,83 +112,155 @@ function DiscountManager({ recipientEmail = "" }) {
           Discount management
         </p>
         <h2 className="mt-2 text-2xl font-light tracking-tight text-slate-800">
-          Apply Discount to Products
+          Apply discounts to selected products
         </h2>
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+          Select products, choose a discount rate, preview the discounted prices, and apply the update.
+        </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-4">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Select product
-            </label>
-            <select
-              value={selectedProductId}
-              onChange={(e) => setSelectedProductId(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-slate-500"
-            >
-              {sampleProducts.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Discount rate (%)
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={discountRate}
-              onChange={(e) => setDiscountRate(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-slate-500"
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={handleApplyDiscount}
-            disabled={sending}
-            className="rounded-xl bg-slate-800 px-5 py-3 text-sm uppercase tracking-[0.22em] text-white transition hover:bg-slate-700"
-          >
-            {sending ? "Sending..." : "Apply Discount"}
-          </button>
+      {loading ? (
+        <div className="rounded-2xl bg-slate-50 px-5 py-6 text-sm text-slate-600">
+          Loading products...
         </div>
+      ) : error ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-6 text-sm text-rose-700">
+          {error}
+        </div>
+      ) : products.length === 0 ? (
+        <div className="rounded-2xl bg-slate-50 px-5 py-6 text-sm text-slate-600">
+          No products are available for discounting.
+        </div>
+      ) : (
+        <form className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]" onSubmit={handleApplyDiscount}>
+          <div className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <label className="block sm:max-w-xs">
+                <span className="mb-2 block text-xs uppercase tracking-[0.22em] text-slate-500">
+                  Discount rate
+                </span>
+                <input
+                  type="number"
+                  min="0.01"
+                  max="99.99"
+                  step="0.01"
+                  value={discountRate}
+                  onChange={(event) => {
+                    setDiscountRate(event.target.value);
+                    setMessage("");
+                  }}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-500"
+                />
+              </label>
 
-        <div className="rounded-2xl bg-slate-50 p-5">
-          <h3 className="text-lg font-medium text-slate-800">Price Preview</h3>
-
-          {selectedProduct && (
-            <div className="mt-4 space-y-3 text-sm text-slate-600">
-              <p>
-                <span className="font-medium text-slate-700">Product:</span>{" "}
-                {selectedProduct.name}
-              </p>
-              <p>
-                <span className="font-medium text-slate-700">Current price:</span>{" "}
-                {selectedProduct.price} {selectedProduct.currency}
-              </p>
-              <p>
-                <span className="font-medium text-slate-700">Discount:</span>{" "}
-                {discountRate}%
-              </p>
-              <p className="text-base font-semibold text-slate-800">
-                New price: {discountedPrice} {selectedProduct.currency}
-              </p>
+              <button
+                type="button"
+                onClick={toggleAllProducts}
+                className="rounded-xl border border-slate-300 px-4 py-3 text-sm uppercase tracking-[0.18em] text-slate-700 transition hover:border-slate-500"
+              >
+                {allProductsSelected ? "Clear selection" : "Select all"}
+              </button>
             </div>
-          )}
 
-          {message && (
-            <p className="mt-5 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-              {message}
+            <div className="overflow-x-auto rounded-2xl border border-slate-200">
+              <div className="grid min-w-[640px] grid-cols-[72px_minmax(0,1fr)_120px_120px] bg-slate-50 px-4 py-3 text-xs uppercase tracking-[0.18em] text-slate-500">
+                <span>Select</span>
+                <span>Product</span>
+                <span>Current</span>
+                <span>Discounted</span>
+              </div>
+
+              <div className="min-w-[640px] divide-y divide-slate-100">
+                {products.map((product) => {
+                  const isSelected = selectedProductIds.includes(product.id);
+                  const discountedPrice = calculateDiscountedPrice(product.price, discountRate);
+
+                  return (
+                    <label
+                      key={product.id}
+                      className="grid cursor-pointer grid-cols-[72px_minmax(0,1fr)_120px_120px] items-center px-4 py-4 text-sm text-slate-700 transition hover:bg-slate-50"
+                    >
+                      <span>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleProduct(product.id)}
+                          className="h-4 w-4 rounded border-slate-300 text-slate-800 focus:ring-slate-500"
+                        />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium text-slate-900">
+                          {product.name}
+                        </span>
+                        <span className="mt-1 block truncate text-xs text-slate-500">
+                          {product.model}
+                        </span>
+                      </span>
+                      <span>{money(product.price)}</span>
+                      <span className={isSelected ? "font-semibold text-emerald-700" : "text-slate-500"}>
+                        {money(discountedPrice)}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="rounded-xl bg-slate-800 px-5 py-3 text-sm uppercase tracking-[0.22em] text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSubmitting ? "Applying..." : "Apply discount"}
+            </button>
+          </div>
+
+          <aside className="rounded-2xl bg-slate-50 p-5">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+              Price preview
             </p>
-          )}
-        </div>
-      </div>
+
+            {discountPreview.length > 0 ? (
+              <div className="mt-4 space-y-3">
+                {discountPreview.map((product) => (
+                  <div key={product.id} className="rounded-xl bg-white p-4 text-sm text-slate-700">
+                    <p className="font-medium text-slate-900">{product.name}</p>
+                    <div className="mt-3 flex items-center justify-between gap-4">
+                      <span>{money(product.price)}</span>
+                      <span className="font-semibold text-emerald-700">
+                        {money(product.discountedPrice)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm leading-6 text-slate-600">
+                Select products to preview discounted prices.
+              </p>
+            )}
+
+            {message && (
+              <p className="mt-5 rounded-xl bg-white px-4 py-3 text-sm text-slate-700">
+                {message}
+              </p>
+            )}
+
+            {appliedDiscounts.length > 0 && (
+              <div className="mt-5 space-y-3">
+                {appliedDiscounts.map((item) => (
+                  <div key={item.product.id} className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-800">
+                    <p className="font-medium">{item.product.name}</p>
+                    <p className="mt-2">
+                      {money(item.original_price)} to {money(item.discounted_price)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </aside>
+        </form>
+      )}
     </section>
   );
 }

@@ -47,3 +47,23 @@ class ProductPriceUpdate(BaseModel):
     price: Decimal = Field(gt=0)
 
     model_config = ConfigDict(extra="forbid")
+
+
+class ProductDiscountApply(BaseModel):
+    product_ids: list[int] = Field(min_length=1)
+    discount_rate: Decimal = Field(gt=0, lt=100)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ProductDiscountResult(BaseModel):
+    product: ProductRead
+    original_price: Decimal
+    discounted_price: Decimal
+    discount_rate: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProductDiscountResponse(BaseModel):
+    updated_products: list[ProductDiscountResult]
