@@ -43,6 +43,19 @@ class ProductUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class ProductManagerProductUpdate(BaseModel):
+    name: str | None = None
+    model: str | None = None
+    serial_number: str | None = None
+    description: str | None = None
+    price: Decimal | None = Field(default=None, gt=0)
+    warranty_status: str | None = None
+    distributor_info: str | None = None
+    category_id: int | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class ProductPriceUpdate(BaseModel):
     price: Decimal = Field(gt=0)
 
