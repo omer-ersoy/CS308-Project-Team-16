@@ -879,7 +879,7 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
 
                   return (
                     <article key={user.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                      <div className="grid gap-4 lg:grid-cols-[1fr_1fr_180px_auto]">
+                      <div className="grid gap-4 lg:grid-cols-[1fr_1fr_220px_auto]">
                         <input
                           value={draft.full_name}
                           onChange={(event) =>
@@ -902,6 +902,8 @@ function AdminPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick,
                           className="w-full border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
                         >
                           <option value="customer">customer</option>
+                          <option value="sales_manager">sales manager</option>
+                          <option value="product_manager">product manager</option>
                           <option value="admin">admin</option>
                         </select>
                         <button

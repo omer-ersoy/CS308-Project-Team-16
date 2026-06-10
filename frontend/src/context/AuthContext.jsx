@@ -22,7 +22,10 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(readStoredUser);
   const [authLoading, setAuthLoading] = useState(false);
   const isLoggedIn = Boolean(token);
-  const isAdmin = currentUser?.role === "admin";
+  const role = currentUser?.role ?? "customer";
+  const isAdmin = role === "admin";
+  const isSalesManager = role === "sales_manager";
+  const isProductManager = role === "product_manager";
 
   useEffect(() => {
     if (token) {
@@ -128,7 +131,10 @@ export function AuthProvider({ children }) {
       setAuthTab,
       token,
       isLoggedIn,
+      role,
       isAdmin,
+      isSalesManager,
+      isProductManager,
       currentUser,
       authLoading,
       openAuth,
@@ -143,7 +149,10 @@ export function AuthProvider({ children }) {
       authTab,
       token,
       isLoggedIn,
+      role,
       isAdmin,
+      isSalesManager,
+      isProductManager,
       currentUser,
       authLoading,
       openAuth,
