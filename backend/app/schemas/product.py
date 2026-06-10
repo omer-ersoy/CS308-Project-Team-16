@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProductBase(BaseModel):
@@ -24,6 +24,8 @@ class ProductRead(ProductBase):
 
 
 class ProductCreate(ProductBase):
+    price: Decimal = Field(gt=0)
+
     model_config = ConfigDict(extra="forbid")
 
 
@@ -33,9 +35,15 @@ class ProductUpdate(BaseModel):
     serial_number: str | None = None
     description: str | None = None
     quantity_in_stock: int | None = None
-    price: Decimal | None = None
+    price: Decimal | None = Field(default=None, gt=0)
     warranty_status: str | None = None
     distributor_info: str | None = None
     category_id: int | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ProductPriceUpdate(BaseModel):
+    price: Decimal = Field(gt=0)
 
     model_config = ConfigDict(extra="forbid")
