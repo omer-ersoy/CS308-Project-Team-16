@@ -20,6 +20,7 @@ import OrdersPage from "./pages/OrdersPage";
 import BoughtProductStatusPage from "./pages/BoughtProductStatusPage";
 import { api } from "./lib/api";
 import { adaptProduct } from "./lib/productAdapter";
+import ProductManagerDeliveryPage from "./pages/ProductManagerDeliveryPage";
 
 const CART_ID = 1;
 const WISHLIST_STORAGE_KEY = "wishlist-product-ids";
@@ -285,6 +286,14 @@ function SalesManagerRoute() {
   return (
     <ProtectedRoute allowedRoles={["sales_manager", "admin"]}>
       <SalesManagerPage />
+    </ProtectedRoute>
+  );
+}
+
+function ProductManagerRoute() {
+  return (
+    <ProtectedRoute allowedRoles={["product_manager", "admin"]}>
+      <ProductManagerDeliveryPage />
     </ProtectedRoute>
   );
 }
@@ -976,6 +985,7 @@ function AppContent() {
             }
           />
           <Route path="/sales-manager" element={<SalesManagerRoute />} />
+          <Route path="/product-manager/deliveries" element={<ProductManagerRoute />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       )}
