@@ -172,4 +172,34 @@ describe("api client", () => {
       }),
     });
   });
+
+  it("sends authenticated wishlist requests", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(mockJsonResponse({ id: 5 }));
+
+    await api.addWishlistItem("customer-token", 9);
+
+    expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/wishlist/items`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer customer-token",
+      },
+      body: JSON.stringify({
+        product_id: 9,
+      }),
+    });
+  });
+
+  it("lists customer discount notifications with bearer auth", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(mockJsonResponse([]));
+
+    await api.listDiscountNotifications("customer-token");
+
+    expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/notifications/discounts`, {
+      headers: {
+        Authorization: "Bearer customer-token",
+      },
+      body: undefined,
+    });
+  });
 });

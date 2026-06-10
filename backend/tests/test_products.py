@@ -88,6 +88,95 @@ def test_sales_manager_can_apply_discount_to_selected_products(
     assert second_product.price == Decimal("75.65")
 
 
+def test_customer_can_manage_wishlist_items(
+    client: TestClient,
+    sample_data: dict[str, object],
+) -> None:
+    customer = sample_data["customer"]
+    product = sample_data["product"]
+    headers = auth_headers(customer)
+
+    empty_response = client.get("/api/wishlist", headers=headers)
+    assert empty_response.status_code == 200
+    assert empty_response.json() == []
+
+    create_response = client.post(
+        "/api/wishlist/items",
+        json={"product_id": product.id},
+        headers=headers,
+    )
+    assert create_response.status_code == 201
+    assert create_response.json()["product"]["id"] == product.id
+
+    duplicate_response = client.post(
+        "/api/wishlist/items",
+        json={"product_id": product.id},
+        headers=headers,
+    )
+    assert duplicate_response.status_code == 201
+    assert duplicate_response.json()["product"]["id"] == product.id
+
+    list_response = client.get("/api/wishlist", headers=headers)
+    assert list_response.status_code == 200
+    assert [item["product"]["id"] for item in list_response.json()] == [product.id]
+
+    delete_response = client.delete(f"/api/wishlist/items/{product.id}", headers=headers)
+    assert delete_response.status_code == 204
+
+    final_response = client.get("/api/wishlist", headers=headers)
+    assert final_response.status_code == 200
+    assert final_response.json() == []
+
+
+def test_discount_creates_notifications_for_wishlist_users(
+    client: TestClient,
+    sample_data: dict[str, object],
+) -> None:
+    admin = sample_data["admin"]
+    customer = sample_data["customer"]
+    product = sample_data["product"]
+
+    wishlist_response = client.post(
+        "/api/wishlist/items",
+        json={"product_id": product.id},
+        headers=auth_headers(customer),
+    )
+    assert wishlist_response.status_code == 201
+
+    discount_response = client.patch(
+        "/api/products/discounts",
+        json={
+            "product_ids": [product.id],
+            "discount_rate": 20,
+        },
+        headers=auth_headers(admin),
+    )
+
+    assert discount_response.status_code == 200
+    assert discount_response.json()["notification_count"] == 1
+
+    notification_response = client.get(
+        "/api/notifications/discounts",
+        headers=auth_headers(customer),
+    )
+    assert notification_response.status_code == 200
+    notifications = notification_response.json()
+    assert len(notifications) == 1
+    assert notifications[0]["product_id"] == product.id
+    assert notifications[0]["product_name"] == product.name
+    assert notifications[0]["discount_rate"] == "20.00"
+    assert notifications[0]["original_price"] == "129.99"
+    assert notifications[0]["discounted_price"] == "103.99"
+    assert notifications[0]["is_read"] is False
+
+    read_response = client.patch(
+        "/api/notifications/discounts/read",
+        headers=auth_headers(customer),
+    )
+    assert read_response.status_code == 200
+    assert read_response.json()[0]["is_read"] is True
+
+
 def test_customer_cannot_apply_product_discounts(
     client: TestClient,
     sample_data: dict[str, object],
