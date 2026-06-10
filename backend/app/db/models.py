@@ -183,10 +183,9 @@ class Order(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     items: Mapped[list["OrderItem"]] = relationship(back_populates="order", cascade="all, delete-orphan")
-    delivery_entry: Mapped["DeliveryListEntry | None"] = relationship(
+    delivery_entries: Mapped[list["DeliveryListEntry"]] = relationship(
         back_populates="order",
         cascade="all, delete-orphan",
-        uselist=False,
     )
 
 
@@ -207,8 +206,25 @@ class DeliveryListEntry(Base):
     __tablename__ = "delivery_list_entries"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), unique=True, index=True)
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
+    customer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("products.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    quantity: Mapped[int] = mapped_column(Integer)
+    total_price: Mapped[Decimal] = mapped_column(DECIMAL(10, 2))
+    delivery_address: Mapped[str] = mapped_column(Text())
+    completion_status: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default="false",
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    order: Mapped["Order"] = relationship(back_populates="delivery_entry")
+    order: Mapped["Order"] = relationship(back_populates="delivery_entries")

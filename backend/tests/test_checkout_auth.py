@@ -63,9 +63,15 @@ def test_authenticated_checkout_creates_delivery_list_entry(
     order = db_session.get(Order, checkout_payload["db_order_id"])
     assert order is not None
 
-    delivery_entry = db_session.query(DeliveryListEntry).filter_by(order_id=order.id).one_or_none()
-    assert delivery_entry is not None
-    assert delivery_entry.user_id == customer.id
+    delivery_entries = db_session.query(DeliveryListEntry).filter_by(order_id=order.id).all()
+    assert len(delivery_entries) == 1
+    delivery_entry = delivery_entries[0]
+    assert delivery_entry.customer_id == customer.id
+    assert delivery_entry.product_id == product.id
+    assert delivery_entry.quantity == 1
+    assert delivery_entry.total_price == product.price
+    assert delivery_entry.delivery_address == "Address pending"
+    assert delivery_entry.completion_status is False
 
 
 def test_add_to_cart_rejects_out_of_stock_product(

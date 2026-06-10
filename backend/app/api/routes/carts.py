@@ -175,7 +175,18 @@ def checkout_cart(
             )
         )
 
-    db.add(DeliveryListEntry(order_id=order.id, user_id=current_user.id))
+    for item in sorted(cart.items, key=lambda cart_item: cart_item.id):
+        db.add(
+            DeliveryListEntry(
+                order_id=order.id,
+                customer_id=current_user.id,
+                product_id=item.product_id,
+                quantity=item.quantity,
+                total_price=item.unit_price * item.quantity,
+                delivery_address="Address pending",
+                completion_status=False,
+            )
+        )
 
     for item in list(cart.items):
         db.delete(item)
