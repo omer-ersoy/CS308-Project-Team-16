@@ -97,7 +97,9 @@ function DiscountManager({
       onProductsUpdated(updatedDiscounts.map((item) => item.product));
       setAppliedDiscounts(updatedDiscounts);
       setSelectedProductIds([]);
-      setMessage(`Applied ${numericDiscountRate}% discount to ${updatedDiscounts.length} product(s).`);
+      setMessage(
+        `Applied ${numericDiscountRate}% discount to ${updatedDiscounts.length} product(s). Created ${response.notification_count ?? 0} wishlist notification(s).`,
+      );
     } catch (requestError) {
       setMessage(requestError.message);
     } finally {
