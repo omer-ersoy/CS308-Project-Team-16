@@ -130,6 +130,60 @@ export const api = {
     return request("/categories");
   },
 
+  listProductManagerProducts(token) {
+    return request("/product-manager/products", { token });
+  },
+
+  createProductManagerProduct(token, payload) {
+    return request("/product-manager/products", {
+      method: "POST",
+      token,
+      body: payload,
+    });
+  },
+
+  updateProductManagerProduct(token, productId, payload) {
+    return request(`/product-manager/products/${productId}`, {
+      method: "PATCH",
+      token,
+      body: payload,
+    });
+  },
+
+  deleteProductManagerProduct(token, productId) {
+    return request(`/product-manager/products/${productId}`, {
+      method: "DELETE",
+      token,
+    });
+  },
+
+  updateProductManagerStock(token, productId, quantityInStock) {
+    return request(`/product-manager/products/${productId}/stock`, {
+      method: "PATCH",
+      token,
+      body: { quantity_in_stock: quantityInStock },
+    });
+  },
+
+  listProductManagerCategories(token) {
+    return request("/product-manager/categories", { token });
+  },
+
+  createProductManagerCategory(token, payload) {
+    return request("/product-manager/categories", {
+      method: "POST",
+      token,
+      body: payload,
+    });
+  },
+
+  deleteProductManagerCategory(token, categoryId) {
+    return request(`/product-manager/categories/${categoryId}`, {
+      method: "DELETE",
+      token,
+    });
+  },
+
   getCart(cartId) {
     return request(`/carts/${cartId}`);
   },

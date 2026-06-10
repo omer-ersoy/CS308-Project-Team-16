@@ -156,8 +156,8 @@ function Navbar({
                 {showProductManagerNavigation && (
                   <button
                     type="button"
-                    className={navButtonClass(pathname.startsWith("/admin"))}
-                    onClick={() => navigate("/admin")}
+                    className={navButtonClass(pathname.startsWith("/product-manager"))}
+                    onClick={() => navigate("/product-manager")}
                   >
                     Product Dashboard
                   </button>
