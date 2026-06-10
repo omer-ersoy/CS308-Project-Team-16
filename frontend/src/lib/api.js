@@ -61,6 +61,42 @@ export const api = {
     });
   },
 
+  listWishlist(token) {
+    return request("/wishlist", {
+      token,
+    });
+  },
+
+  addWishlistItem(token, productId) {
+    return request("/wishlist/items", {
+      method: "POST",
+      token,
+      body: {
+        product_id: productId,
+      },
+    });
+  },
+
+  removeWishlistItem(token, productId) {
+    return request(`/wishlist/items/${productId}`, {
+      method: "DELETE",
+      token,
+    });
+  },
+
+  listDiscountNotifications(token) {
+    return request("/notifications/discounts", {
+      token,
+    });
+  },
+
+  markDiscountNotificationsRead(token) {
+    return request("/notifications/discounts/read", {
+      method: "PATCH",
+      token,
+    });
+  },
+
   listProductReviews(productId, token) {
     return request(`/products/${productId}/reviews`, {
       token,

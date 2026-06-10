@@ -1,5 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import emailjs from "@emailjs/browser";
 import { buildInvoicePdfDataUrl, enrichInvoiceItems } from "./lib/invoicePdf";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -318,6 +318,7 @@ function OrderStatusRoute({ searchProps, cartCount, wishlistCount, onCartClick }
 function AppContent() {
   const { token, currentUser, openAuth } = useAuth();
   const location = useLocation();
+  const syncedWishlistUserId = useRef(null);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
@@ -330,6 +331,10 @@ function AppContent() {
   const [searchValue, setSearchValue] = useState("");
   const [wishlistIds, setWishlistIds] = useState([]);
   const [wishlistHydrated, setWishlistHydrated] = useState(false);
+  const [wishlistSyncError, setWishlistSyncError] = useState("");
+  const [discountNotifications, setDiscountNotifications] = useState([]);
+  const [discountNotificationsLoading, setDiscountNotificationsLoading] = useState(false);
+  const [discountNotificationsError, setDiscountNotificationsError] = useState("");
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState("");
   const [sortOption, setSortOption] = useState("default");
@@ -355,6 +360,64 @@ function AppContent() {
       setWishlistHydrated(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (!token || !currentUser?.id) {
+      syncedWishlistUserId.current = null;
+      setDiscountNotifications([]);
+      setDiscountNotificationsError("");
+      setDiscountNotificationsLoading(false);
+      return undefined;
+    }
+
+    if (!wishlistHydrated || syncedWishlistUserId.current === currentUser.id) {
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    async function syncCustomerWishlist() {
+      setWishlistSyncError("");
+      setDiscountNotificationsError("");
+      setDiscountNotificationsLoading(true);
+
+      try {
+        const localProductIds = wishlistIds
+          .map((id) => Number(id))
+          .filter((id) => Number.isInteger(id) && id > 0);
+
+        await Promise.allSettled(
+          localProductIds.map((productId) => api.addWishlistItem(token, productId)),
+        );
+
+        const [wishlistItems, notifications] = await Promise.all([
+          api.listWishlist(token),
+          api.listDiscountNotifications(token),
+        ]);
+
+        if (!isMounted) return;
+
+        setWishlistIds(wishlistItems.map((item) => String(item.product.id)));
+        setDiscountNotifications(notifications);
+        syncedWishlistUserId.current = currentUser.id;
+      } catch (error) {
+        if (!isMounted) return;
+        setWishlistSyncError(error.message);
+        setDiscountNotificationsError(error.message);
+        syncedWishlistUserId.current = currentUser.id;
+      } finally {
+        if (isMounted) {
+          setDiscountNotificationsLoading(false);
+        }
+      }
+    }
+
+    syncCustomerWishlist();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser?.id, token, wishlistHydrated, wishlistIds]);
 
   useEffect(() => {
     let isMounted = true;
@@ -521,18 +584,44 @@ function AppContent() {
     }
   }, []);
 
-  const handleToggleWishlist = useCallback((productId) => {
+  const handleToggleWishlist = useCallback(async (productId) => {
+    const normalizedProductId = String(productId);
+    const apiProductId = Number(productId);
+    const addedToWishlist = !wishlistIds.includes(normalizedProductId);
+
     setWishlistIds((current) => {
       let nextWishlistIds;
-      if (current.includes(productId)) {
-        nextWishlistIds = current.filter((id) => id !== productId);
+      if (current.includes(normalizedProductId)) {
+        nextWishlistIds = current.filter((id) => id !== normalizedProductId);
       } else {
-        nextWishlistIds = [productId, ...current];
+        nextWishlistIds = [normalizedProductId, ...current];
       }
       localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(nextWishlistIds));
       return nextWishlistIds;
     });
-  }, []);
+
+    if (!token || !Number.isInteger(apiProductId)) {
+      return;
+    }
+
+    try {
+      if (addedToWishlist) {
+        await api.addWishlistItem(token, apiProductId);
+      } else {
+        await api.removeWishlistItem(token, apiProductId);
+      }
+      setWishlistSyncError("");
+    } catch (error) {
+      setWishlistSyncError(error.message);
+      setWishlistIds((current) => {
+        const nextWishlistIds = addedToWishlist
+          ? current.filter((id) => id !== normalizedProductId)
+          : [normalizedProductId, ...current];
+        localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(nextWishlistIds));
+        return nextWishlistIds;
+      });
+    }
+  }, [token, wishlistIds]);
 
   const wishlistProductSet = useMemo(() => new Set(wishlistIds), [wishlistIds]);
 
@@ -556,6 +645,20 @@ function AppContent() {
     () => new Map(products.map((product) => [product.apiId, product])),
     [products],
   );
+
+  const handleMarkDiscountNotificationsRead = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
+    try {
+      const notifications = await api.markDiscountNotificationsRead(token);
+      setDiscountNotifications(notifications);
+      setDiscountNotificationsError("");
+    } catch (error) {
+      setDiscountNotificationsError(error.message);
+    }
+  }, [token]);
 
   const sendInvoiceEmail = useCallback(
     async (invoice) => {
@@ -798,6 +901,11 @@ function AppContent() {
                 products={filteredWishlistProducts}
                 isLoading={isCatalogLoading}
                 error={catalogError}
+                syncError={wishlistSyncError}
+                discountNotifications={discountNotifications}
+                discountNotificationsLoading={discountNotificationsLoading}
+                discountNotificationsError={discountNotificationsError}
+                onMarkDiscountNotificationsRead={handleMarkDiscountNotificationsRead}
                 cartCount={cartCount}
                 wishlistCount={wishlistCount}
                 onCartClick={() => setCartOpen(true)}
