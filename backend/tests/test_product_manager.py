@@ -89,6 +89,48 @@ def test_customer_cannot_manage_products(
     assert response.status_code == 403
 
 
+def test_product_manager_can_create_and_delete_empty_categories(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    manager = create_product_manager(db_session)
+    headers = auth_headers(manager)
+
+    create_response = client.post(
+        "/api/product-manager/categories",
+        json={"name": "Travel Sizes", "description": "Compact products"},
+        headers=headers,
+    )
+    assert create_response.status_code == 201
+    created = create_response.json()
+
+    list_response = client.get("/api/product-manager/categories", headers=headers)
+    assert list_response.status_code == 200
+    assert created["id"] in [category["id"] for category in list_response.json()]
+
+    delete_response = client.delete(
+        f"/api/product-manager/categories/{created['id']}",
+        headers=headers,
+    )
+    assert delete_response.status_code == 204
+
+
+def test_product_manager_cannot_delete_category_with_products(
+    client: TestClient,
+    db_session: Session,
+    sample_data: dict[str, object],
+) -> None:
+    manager = create_product_manager(db_session)
+    category = sample_data["category"]
+
+    response = client.delete(
+        f"/api/product-manager/categories/{category.id}",
+        headers=auth_headers(manager),
+    )
+
+    assert response.status_code == 409
+
+
 def test_product_manager_product_update_rejects_stock_changes(
     client: TestClient,
     db_session: Session,
