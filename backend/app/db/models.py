@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DECIMAL, CheckConstraint, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import DECIMAL, Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -25,6 +25,14 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
 
     reviews: Mapped[list["ProductReview"]] = relationship(back_populates="user")
+    wishlist_items: Mapped[list["WishlistItem"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    discount_notifications: Mapped[list["DiscountNotification"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
 
 class Category(Base):
@@ -54,6 +62,14 @@ class Product(Base):
     category: Mapped["Category"] = relationship(back_populates="products")
     cart_items: Mapped[list["CartItem"]] = relationship(back_populates="product")
     reviews: Mapped[list["ProductReview"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    wishlist_items: Mapped[list["WishlistItem"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    discount_notifications: Mapped[list["DiscountNotification"]] = relationship(
         back_populates="product",
         cascade="all, delete-orphan",
     )
@@ -92,6 +108,38 @@ class ProductReview(Base):
     @property
     def user_full_name(self) -> str:
         return self.user.full_name
+
+
+class WishlistItem(Base):
+    __tablename__ = "wishlist_items"
+    __table_args__ = (
+        UniqueConstraint("user_id", "product_id", name="uq_wishlist_items_user_product"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="wishlist_items")
+    product: Mapped["Product"] = relationship(back_populates="wishlist_items")
+
+
+class DiscountNotification(Base):
+    __tablename__ = "discount_notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    product_name: Mapped[str] = mapped_column(String(255))
+    discount_rate: Mapped[Decimal] = mapped_column(DECIMAL(5, 2))
+    original_price: Mapped[Decimal] = mapped_column(DECIMAL(10, 2))
+    discounted_price: Mapped[Decimal] = mapped_column(DECIMAL(10, 2))
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="discount_notifications")
+    product: Mapped["Product"] = relationship(back_populates="discount_notifications")
 
 
 class Cart(Base):

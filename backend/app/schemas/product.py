@@ -67,3 +67,4 @@ class ProductDiscountResult(BaseModel):
 
 class ProductDiscountResponse(BaseModel):
     updated_products: list[ProductDiscountResult]
+    notification_count: int = 0

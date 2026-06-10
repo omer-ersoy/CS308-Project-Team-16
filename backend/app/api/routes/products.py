@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_sales_manager_user
-from app.db.models import Product
+from app.db.models import DiscountNotification, Product, WishlistItem
 from app.db.session import get_db
 from app.schemas.product import (
     ProductDiscountApply,
@@ -63,11 +63,17 @@ def apply_product_discount(
         )
 
     updated_products = []
+    discount_details_by_product_id = {}
     for product_id in product_ids:
         product = products_by_id[product_id]
         original_price = product.price
         discounted_price = calculate_discounted_price(original_price, payload.discount_rate)
         product.price = discounted_price
+        discount_details_by_product_id[product_id] = {
+            "product_name": product.name,
+            "original_price": original_price,
+            "discounted_price": discounted_price,
+        }
         updated_products.append(
             ProductDiscountResult(
                 product=ProductRead.model_validate(product),
@@ -77,9 +83,28 @@ def apply_product_discount(
             )
         )
 
+    wishlist_items = db.scalars(
+        select(WishlistItem).where(WishlistItem.product_id.in_(product_ids))
+    ).all()
+    for wishlist_item in wishlist_items:
+        discount_details = discount_details_by_product_id[wishlist_item.product_id]
+        db.add(
+            DiscountNotification(
+                user_id=wishlist_item.user_id,
+                product_id=wishlist_item.product_id,
+                product_name=discount_details["product_name"],
+                discount_rate=payload.discount_rate,
+                original_price=discount_details["original_price"],
+                discounted_price=discount_details["discounted_price"],
+            )
+        )
+
     db.commit()
 
-    return ProductDiscountResponse(updated_products=updated_products)
+    return ProductDiscountResponse(
+        updated_products=updated_products,
+        notification_count=len(wishlist_items),
+    )
 
 
 @router.patch("/{product_id}/price", response_model=ProductRead)
