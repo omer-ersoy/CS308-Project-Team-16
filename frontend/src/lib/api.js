@@ -42,6 +42,14 @@ export const api = {
     return request(`/products${queryString ? `?${queryString}` : ""}`);
   },
 
+  updateProductPrice(token, productId, price) {
+    return request(`/products/${productId}/price`, {
+      method: "PATCH",
+      token,
+      body: { price },
+    });
+  },
+
   listProductReviews(productId, token) {
     return request(`/products/${productId}/reviews`, {
       token,
@@ -97,8 +105,8 @@ export const api = {
 
   checkoutCart(cartId, token) {
     return request(`/carts/${cartId}/checkout`, {
-        method: "POST",
-        token,
+      method: "POST",
+      token,
     });
   },
 
