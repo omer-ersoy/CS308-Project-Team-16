@@ -17,8 +17,9 @@ function Navbar({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { openAuth, isLoggedIn, isAdmin } = useAuth();
+  const { openAuth, isLoggedIn, currentUser, isAdmin } = useAuth();
   const pathname = location.pathname;
+  const role = currentUser?.role ?? "guest";
 
   const navButtonClass = (isActive) =>
     `sans-ui rounded-full border px-4 py-2 text-[12px] tracking-[0.18em] transition ${
@@ -26,6 +27,30 @@ function Navbar({
         ? "border-slate-300 bg-slate-900 text-white shadow-[0_16px_36px_-28px_rgba(15,23,42,0.8)]"
         : "border-slate-200/70 bg-white/80 text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-900"
     }`;
+
+  const accountLabelByRole = {
+    customer: "My account",
+    sales_manager: "Sales account",
+    product_manager: "Product account",
+    admin: "Admin account",
+    guest: "Account",
+  };
+
+  const accountLabel = isLoggedIn
+    ? accountLabelByRole[role] ?? "My account"
+    : "Account";
+
+  const showCustomerNavigation =
+    !isLoggedIn || role === "customer";
+
+  const showSalesManagerNavigation =
+    isLoggedIn && (role === "sales_manager" || role === "admin");
+
+  const showProductManagerNavigation =
+    isLoggedIn && (role === "product_manager" || role === "admin");
+
+  const showAdminNavigation =
+    isLoggedIn && isAdmin;
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(247,250,249,0.78))] backdrop-blur-xl">
@@ -69,57 +94,82 @@ function Navbar({
                 className="sans-ui flex flex-wrap items-center gap-2.5 text-[12px] tracking-[0.18em] uppercase"
                 aria-label="Primary"
               >
-                <button
-                  type="button"
-                  className={navButtonClass(pathname === "/collections")}
-                  onClick={() => navigate("/collections")}
-                >
-                  Collections
-                </button>
-                <button
-                  type="button"
-                  className={navButtonClass(pathname === "/wishlist")}
-                  onClick={() => navigate("/wishlist")}
-                >
-                  Wishlist
-                </button>
-                <button
-                  type="button"
-                  className={navButtonClass(pathname === "/help")}
-                  onClick={() => navigate("/help")}
-                >
-                  Help
-                </button>
-                <button
-                  type="button"
-                  className={navButtonClass(pathname === "/contact")}
-                  onClick={() => navigate("/contact")}
-                >
-                  Contact
-                </button>
-                <button
-                  type="button"
-                  className={navButtonClass(pathname === "/about")}
-                  onClick={() => navigate("/about")}
-                >
-                  About
-                </button>
-                {isAdmin && (
+                {showCustomerNavigation && (
+                  <>
+                    <button
+                      type="button"
+                      className={navButtonClass(pathname === "/collections")}
+                      onClick={() => navigate("/collections")}
+                    >
+                      Collections
+                    </button>
+                    <button
+                      type="button"
+                      className={navButtonClass(pathname === "/wishlist")}
+                      onClick={() => navigate("/wishlist")}
+                    >
+                      Wishlist
+                    </button>
+                    <button
+                      type="button"
+                      className={navButtonClass(pathname === "/help")}
+                      onClick={() => navigate("/help")}
+                    >
+                      Help
+                    </button>
+                    <button
+                      type="button"
+                      className={navButtonClass(pathname === "/contact")}
+                      onClick={() => navigate("/contact")}
+                    >
+                      Contact
+                    </button>
+                    <button
+                      type="button"
+                      className={navButtonClass(pathname === "/about")}
+                      onClick={() => navigate("/about")}
+                    >
+                      About
+                    </button>
+                    {isLoggedIn && role === "customer" && (
+                      <button
+                        type="button"
+                        className={navButtonClass(pathname === "/orders")}
+                        onClick={() => navigate("/orders")}
+                      >
+                        My Orders
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {showSalesManagerNavigation && (
+                  <button
+                    type="button"
+                    className={navButtonClass(pathname.startsWith("/sales-manager"))}
+                    onClick={() => navigate("/sales-manager")}
+                  >
+                    Sales Dashboard
+                  </button>
+                )}
+
+                {showProductManagerNavigation && (
+                  <button
+                    type="button"
+                    className={navButtonClass(pathname.startsWith("/admin"))}
+                    onClick={() => navigate("/admin")}
+                  >
+                    Product Dashboard
+                  </button>
+                )}
+
+                {showAdminNavigation && (
                   <button
                     type="button"
                     className={navButtonClass(pathname.startsWith("/admin"))}
                     onClick={() => navigate("/admin")}
                   >
                     Admin
-                  </button>
-                )}
-                {isLoggedIn && (
-                  <button
-                    type="button"
-                    className={navButtonClass(pathname === "/orders")}
-                    onClick={() => navigate("/orders")}
-                  >
-                    My Orders
                   </button>
                 )}
               </nav>
@@ -130,7 +180,7 @@ function Navbar({
                   className="rounded-full border border-transparent px-3 py-1.5 transition hover:border-slate-200 hover:bg-white/80 hover:text-slate-800"
                   onClick={() => openAuth("login")}
                 >
-                  {isLoggedIn ? "My account" : "Account"}
+                  {accountLabel}
                 </button>
                 <button
                   type="button"
