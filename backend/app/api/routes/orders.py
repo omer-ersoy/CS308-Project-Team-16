@@ -49,12 +49,16 @@ def cancel_my_order(
     )
     if order is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
-    if order.status != "processing":
+
+    # Allow cancellation only for initial statuses (business rule SCRUM-183)
+    allowed_statuses = {"pending", "processing"}
+    if order.status not in allowed_statuses:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Only processing orders can be cancelled.",
+            detail=f"Only orders with status in {', '.join(sorted(allowed_statuses))} can be cancelled.",
         )
 
+    # Restore stock for each order item with an associated product
     for item in order.items:
         if item.product_id is None:
             continue
