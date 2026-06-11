@@ -331,6 +331,46 @@ export const api = {
     return request("/orders/mine", { token });
   },
 
+  cancelMyOrder(token, orderId) {
+    return request(`/orders/${orderId}/cancel`, {
+      method: "POST",
+      token,
+    });
+  },
+
+  createReturnRequest(token, payload) {
+    return request("/returns", {
+      method: "POST",
+      token,
+      body: payload,
+    });
+  },
+
+  listReturnRequests(token, params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.statusFilter !== undefined) {
+      searchParams.set("status_filter", params.statusFilter);
+    }
+    const queryString = searchParams.toString();
+    return request(`/returns${queryString ? `?${queryString}` : ""}`, { token });
+  },
+
+  approveReturnRequest(token, requestId, payload = {}) {
+    return request(`/returns/${requestId}/approve`, {
+      method: "POST",
+      token,
+      body: payload,
+    });
+  },
+
+  rejectReturnRequest(token, requestId, payload = {}) {
+    return request(`/returns/${requestId}/reject`, {
+      method: "POST",
+      token,
+      body: payload,
+    });
+  },
+
   getRevenueSummary(token, params = {}) {
     const searchParams = new URLSearchParams();
     if (params.startDate) {
