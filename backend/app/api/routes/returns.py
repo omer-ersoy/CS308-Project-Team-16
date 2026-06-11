@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_current_user, get_sales_manager_user
-from app.db.models import OrderItem, Product, ReturnRequest
+from app.db.models import OrderItem, Product, RefundNotification, ReturnRequest
 from app.db.session import get_db
 from app.schemas.return_request import ReturnRequestCreate, ReturnRequestDecision, ReturnRequestRead
 from app.schemas.user import UserRead
@@ -127,10 +127,21 @@ def approve_return_request(
         if product is not None:
             product.quantity_in_stock += return_request.quantity
 
+    return_request.order.status = "refunded"
     return_request.status = "approved"
     return_request.decision_note = payload.decision_note if payload else None
     return_request.evaluated_by_id = current_user.id
     return_request.evaluated_at = datetime.now(UTC)
+    db.add(
+        RefundNotification(
+            user_id=return_request.customer_id,
+            return_request_id=return_request.id,
+            product_name=return_request.product_name,
+            refund_amount=return_request.refund_amount,
+            status="approved",
+            decision_note=return_request.decision_note,
+        )
+    )
     db.commit()
 
     return db.scalar(
@@ -152,6 +163,16 @@ def reject_return_request(
     return_request.decision_note = payload.decision_note if payload else None
     return_request.evaluated_by_id = current_user.id
     return_request.evaluated_at = datetime.now(UTC)
+    db.add(
+        RefundNotification(
+            user_id=return_request.customer_id,
+            return_request_id=return_request.id,
+            product_name=return_request.product_name,
+            refund_amount=return_request.refund_amount,
+            status="rejected",
+            decision_note=return_request.decision_note,
+        )
+    )
     db.commit()
 
     return db.scalar(

@@ -82,7 +82,7 @@ export function AuthProvider({ children }) {
   }, [refreshCurrentUser, token]);
 
   const openAuth = useCallback((tab = "login") => {
-    setAuthTab(tab);
+    setAuthTab(tab === "signup" ? "signup" : "login");
     setAuthOpen(true);
   }, []);
 
@@ -122,6 +122,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     setToken("");
     setCurrentUser(null);
+    setAuthTab("login");
   }, []);
 
   const value = useMemo(

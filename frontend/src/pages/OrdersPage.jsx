@@ -9,6 +9,7 @@ const ORDER_STATUS_LABELS = {
   "in-transit": "In Transit",
   delivered: "Delivered",
   cancelled: "Cancelled",
+  refunded: "Refunded",
 };
 
 const ORDER_STATUS_CLASSES = {
@@ -16,6 +17,7 @@ const ORDER_STATUS_CLASSES = {
   "in-transit": "border-sky-200 bg-sky-50 text-sky-700",
   delivered: "border-emerald-200 bg-emerald-50 text-emerald-700",
   cancelled: "border-rose-200 bg-rose-50 text-rose-700",
+  refunded: "border-violet-200 bg-violet-50 text-violet-700",
 };
 
 function formatOrderDate(value) {

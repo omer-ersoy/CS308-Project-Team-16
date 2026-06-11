@@ -70,6 +70,8 @@ function AuthDrawer() {
       await register({
         full_name: `${firstName} ${lastName}`.trim(),
         email: String(formData.get("email") ?? ""),
+        tax_id: String(formData.get("taxId") ?? ""),
+        address: String(formData.get("address") ?? ""),
         password: String(formData.get("password") ?? ""),
       });
     } catch (error) {
@@ -171,6 +173,30 @@ function AuthDrawer() {
               >
                 Log out
               </button>
+              <div className="border border-slate-200 bg-white p-4 text-sm text-slate-600">
+                <dl className="space-y-3">
+                  <div>
+                    <dt className="text-[11px] tracking-[0.18em] text-slate-400 uppercase">Customer ID</dt>
+                    <dd className="mt-1 text-slate-800">{currentUser?.id ?? "-"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] tracking-[0.18em] text-slate-400 uppercase">Name</dt>
+                    <dd className="mt-1 text-slate-800">{currentUser?.full_name ?? "-"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] tracking-[0.18em] text-slate-400 uppercase">Tax ID</dt>
+                    <dd className="mt-1 text-slate-800">{currentUser?.tax_id ?? "-"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] tracking-[0.18em] text-slate-400 uppercase">Email</dt>
+                    <dd className="mt-1 break-all text-slate-800">{currentUser?.email ?? "-"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] tracking-[0.18em] text-slate-400 uppercase">Home address</dt>
+                    <dd className="mt-1 text-slate-800">{currentUser?.address ?? "-"}</dd>
+                  </div>
+                </dl>
+              </div>
             </div>
           ) : authTab === "login" ? (
             <form className="space-y-5" onSubmit={handleLoginSubmit}>
@@ -235,6 +261,24 @@ function AuthDrawer() {
                 placeholder="Email"
                 autoComplete="email"
                 className="w-full border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-500"
+                required
+              />
+              <input
+                type="text"
+                name="taxId"
+                placeholder="Tax ID"
+                autoComplete="off"
+                minLength={4}
+                className="w-full border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-500"
+                required
+              />
+              <textarea
+                name="address"
+                placeholder="Home address"
+                autoComplete="street-address"
+                minLength={8}
+                rows={3}
+                className="min-h-24 w-full resize-y border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-500"
                 required
               />
               <div className="relative">

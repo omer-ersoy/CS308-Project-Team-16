@@ -12,6 +12,8 @@ class UserBase(BaseModel):
 
 
 class UserRegister(UserBase):
+    tax_id: str = Field(min_length=4, max_length=64)
+    address: str = Field(min_length=8, max_length=500)
     password: str = Field(min_length=8)
 
     @field_validator("full_name")
@@ -20,6 +22,14 @@ class UserRegister(UserBase):
         cleaned = value.strip()
         if len(cleaned) < 2:
             raise ValueError("Full name must contain at least 2 characters")
+        return cleaned
+
+    @field_validator("tax_id", "address")
+    @classmethod
+    def validate_required_customer_text(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("This field is required")
         return cleaned
 
     @field_validator("password")
@@ -36,6 +46,8 @@ class UserRegister(UserBase):
 
 class UserRead(UserBase):
     id: int
+    tax_id: str | None = None
+    address: str | None = None
     role: UserRole = "customer"
 
     model_config = ConfigDict(from_attributes=True)
@@ -44,6 +56,8 @@ class UserRead(UserBase):
 class UserUpdate(BaseModel):
     full_name: str | None = None
     email: EmailStr | None = None
+    tax_id: str | None = None
+    address: str | None = None
     role: UserRole | None = None
 
     model_config = ConfigDict(extra="forbid")

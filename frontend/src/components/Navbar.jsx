@@ -13,6 +13,7 @@ function Navbar({
   onClearSearch = noop,
   searchResultCount = 0,
   searchStatus = "idle",
+  notificationCount = 0,
   onCartClick = noop,
 }) {
   const navigate = useNavigate();
@@ -79,6 +80,19 @@ function Navbar({
                 >
                   Wishlist {wishlistCount}
                 </button>
+                {isLoggedIn && role === "customer" ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/notifications")}
+                    className={`sans-ui rounded-full border px-3 py-1 text-[10px] tracking-[0.24em] uppercase shadow-[0_12px_24px_-22px_rgba(15,23,42,0.6)] transition hover:border-slate-300 ${
+                      notificationCount > 0
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                        : "border-slate-200 bg-white/90 text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Notifications {notificationCount > 0 ? notificationCount : ""}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={onCartClick}
@@ -154,13 +168,29 @@ function Navbar({
                 )}
 
                 {showProductManagerNavigation && (
-                  <button
-                    type="button"
-                    className={navButtonClass(pathname.startsWith("/product-manager"))}
-                    onClick={() => navigate("/product-manager")}
-                  >
-                    Product Dashboard
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className={navButtonClass(pathname === "/product-manager")}
+                      onClick={() => navigate("/product-manager")}
+                    >
+                      Product Dashboard
+                    </button>
+                    <button
+                      type="button"
+                      className={navButtonClass(pathname.startsWith("/product-manager/deliveries"))}
+                      onClick={() => navigate("/product-manager/deliveries")}
+                    >
+                      Delivery List
+                    </button>
+                    <button
+                      type="button"
+                      className={navButtonClass(pathname.startsWith("/product-manager/reviews"))}
+                      onClick={() => navigate("/product-manager/reviews")}
+                    >
+                      Product Reviews
+                    </button>
+                  </>
                 )}
 
                 {showAdminNavigation && (

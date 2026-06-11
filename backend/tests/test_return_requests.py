@@ -259,6 +259,8 @@ def test_sales_manager_can_approve_return_request(
     assert payload["decision_note"] == "Approved after review."
     assert payload["evaluated_by_id"] == sales_manager.id
     assert payload["evaluated_at"] is not None
+    db_session.refresh(return_request.order)
+    assert return_request.order.status == "refunded"
     db_session.refresh(product)
     assert product.quantity_in_stock == 4
 

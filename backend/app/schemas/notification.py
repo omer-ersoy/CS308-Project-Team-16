@@ -18,3 +18,16 @@ class DiscountNotificationRead(BaseModel):
     product: ProductRead
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class RefundNotificationRead(BaseModel):
+    id: int
+    return_request_id: int
+    product_name: str
+    refund_amount: Decimal
+    status: str
+    decision_note: str | None = None
+    is_read: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

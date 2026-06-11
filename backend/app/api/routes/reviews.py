@@ -38,7 +38,7 @@ def user_has_delivered_product(db: Session, user_id: int, product_id: int) -> bo
         .join(Order, Order.id == OrderItem.order_id)
         .where(
             Order.user_id == user_id,
-            Order.status == "delivered",
+            Order.status.in_(("delivered", "refunded")),
             OrderItem.product_id == product_id,
         )
         .limit(1)

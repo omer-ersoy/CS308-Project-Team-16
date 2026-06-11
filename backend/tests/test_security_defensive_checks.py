@@ -9,6 +9,8 @@ def test_register_rejects_weak_password(client: TestClient) -> None:
         json={
             "full_name": "Weak Password",
             "email": "weak@example.com",
+            "tax_id": "33333333330",
+            "address": "Weak Password Test Address",
             "password": "password",
         },
     )

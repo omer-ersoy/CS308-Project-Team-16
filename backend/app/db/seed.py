@@ -1,17 +1,34 @@
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import inspect, select, text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.security import hash_password
 from app.db.base import Base
-from app.db.models import Cart, Category, Product, User
+from app.db.models import Cart, Category, DeliveryListEntry, Product, User
 from app.db.session import engine
 
 
 def init_database() -> None:
     Base.metadata.create_all(bind=engine)
+    with engine.begin() as connection:
+        user_columns = {column["name"] for column in inspect(connection).get_columns("users")}
+        if "tax_id" not in user_columns:
+            connection.execute(text("ALTER TABLE users ADD COLUMN tax_id VARCHAR(64)"))
+        if "address" not in user_columns:
+            connection.execute(text("ALTER TABLE users ADD COLUMN address TEXT"))
+        if connection.dialect.name == "postgresql":
+            connection.execute(text("ALTER TABLE orders DROP CONSTRAINT IF EXISTS ck_orders_status"))
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE orders
+                    ADD CONSTRAINT ck_orders_status
+                    CHECK (status IN ('processing', 'in-transit', 'delivered', 'cancelled', 'refunded'))
+                    """
+                )
+            )
 
 
 def ensure_user(
@@ -21,14 +38,27 @@ def ensure_user(
     email: str,
     role: str,
     password: str,
+    tax_id: str | None = None,
+    address: str | None = None,
 ) -> User:
     user = db.scalar(select(User).where(User.email == email.lower()))
     if user is not None:
+        changed = False
+        if tax_id and not user.tax_id:
+            user.tax_id = tax_id
+            changed = True
+        if address and not user.address:
+            user.address = address
+            changed = True
+        if changed:
+            db.flush()
         return user
 
     user = User(
         full_name=full_name,
         email=email.lower(),
+        tax_id=tax_id,
+        address=address,
         role=role,
         hashed_password=hash_password(password),
     )
@@ -96,6 +126,38 @@ def ensure_cart(db: Session, *, cart_id: int, user_id: int | None = None) -> Car
     return cart
 
 
+def backfill_delivery_addresses(db: Session) -> None:
+    entries = db.scalars(
+        select(DeliveryListEntry).where(DeliveryListEntry.delivery_address == "Address pending")
+    ).all()
+    for entry in entries:
+        customer = db.get(User, entry.customer_id) if entry.customer_id is not None else None
+        if customer and customer.address:
+            entry.delivery_address = customer.address
+        elif customer:
+            entry.delivery_address = f"{customer.full_name} delivery address, Customer #{customer.id}"
+    if entries:
+        db.flush()
+
+
+def sync_postgres_sequence(db: Session, table_name: str, column_name: str = "id") -> None:
+    if db.bind is None or db.bind.dialect.name != "postgresql":
+        return
+
+    db.execute(
+        text(
+            """
+            SELECT setval(
+                pg_get_serial_sequence(:table_name, :column_name),
+                COALESCE((SELECT MAX(id) FROM public.""" + table_name + """), 1),
+                true
+            )
+            """
+        ),
+        {"table_name": table_name, "column_name": column_name},
+    )
+
+
 def seed_database(db: Session) -> None:
     ensure_user(
         db,
@@ -103,6 +165,8 @@ def seed_database(db: Session) -> None:
         email="customer@example.com",
         role="customer",
         password="password123",
+        tax_id="11111111110",
+        address="Demo Customer Home, Sabanci University, Orta Mahalle, Tuzla, Istanbul",
     )
     ensure_user(
         db,
@@ -110,6 +174,8 @@ def seed_database(db: Session) -> None:
         email=settings.seed_admin_email,
         role="admin",
         password=settings.seed_admin_password,
+        tax_id="00000000001",
+        address="Admin Office, Sabanci University, Tuzla, Istanbul",
     )
     ensure_user(
         db,
@@ -117,6 +183,8 @@ def seed_database(db: Session) -> None:
         email="sales.manager@example.com",
         role="sales_manager",
         password="password123",
+        tax_id="00000000002",
+        address="Sales Office, Sabanci University, Tuzla, Istanbul",
     )
     ensure_user(
         db,
@@ -124,7 +192,10 @@ def seed_database(db: Session) -> None:
         email="product.manager@example.com",
         role="product_manager",
         password="password123",
+        tax_id="00000000003",
+        address="Product Office, Sabanci University, Tuzla, Istanbul",
     )
+    backfill_delivery_addresses(db)
 
     ensure_category(
         db,
@@ -209,4 +280,6 @@ def seed_database(db: Session) -> None:
     )
 
     ensure_cart(db, cart_id=1, user_id=None)
+    for table_name in ("users", "categories", "products", "carts"):
+        sync_postgres_sequence(db, table_name)
     db.commit()

@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session, selectinload
 from fastapi import APIRouter, Depends
 
 from app.api.deps import get_current_user
-from app.db.models import DiscountNotification, Product
+from app.db.models import DiscountNotification, Product, RefundNotification
 from app.db.session import get_db
-from app.schemas.notification import DiscountNotificationRead
+from app.schemas.notification import DiscountNotificationRead, RefundNotificationRead
 from app.schemas.user import UserRead
 
 
@@ -36,6 +36,37 @@ def mark_discount_notifications_read(
         .options(selectinload(DiscountNotification.product).selectinload(Product.reviews))
         .where(DiscountNotification.user_id == current_user.id)
         .order_by(DiscountNotification.created_at.desc(), DiscountNotification.id.desc())
+    ).all()
+
+    for notification in notifications:
+        notification.is_read = True
+
+    db.commit()
+
+    return notifications
+
+
+@router.get("/refunds", response_model=list[RefundNotificationRead])
+def list_refund_notifications(
+    current_user: UserRead = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[RefundNotification]:
+    return db.scalars(
+        select(RefundNotification)
+        .where(RefundNotification.user_id == current_user.id)
+        .order_by(RefundNotification.created_at.desc(), RefundNotification.id.desc())
+    ).all()
+
+
+@router.patch("/refunds/read", response_model=list[RefundNotificationRead])
+def mark_refund_notifications_read(
+    current_user: UserRead = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[RefundNotification]:
+    notifications = db.scalars(
+        select(RefundNotification)
+        .where(RefundNotification.user_id == current_user.id)
+        .order_by(RefundNotification.created_at.desc(), RefundNotification.id.desc())
     ).all()
 
     for notification in notifications:

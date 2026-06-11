@@ -21,6 +21,8 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     full_name: Mapped[str] = mapped_column(String(255))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    tax_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    address: Mapped[str | None] = mapped_column(Text(), nullable=True)
     role: Mapped[str] = mapped_column(String(32), default="customer", server_default="customer")
     hashed_password: Mapped[str] = mapped_column(String(255))
 
@@ -153,6 +155,20 @@ class DiscountNotification(Base):
     product: Mapped["Product"] = relationship(back_populates="discount_notifications")
 
 
+class RefundNotification(Base):
+    __tablename__ = "refund_notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    return_request_id: Mapped[int] = mapped_column(ForeignKey("return_requests.id", ondelete="CASCADE"), index=True)
+    product_name: Mapped[str] = mapped_column(String(255))
+    refund_amount: Mapped[Decimal] = mapped_column(DECIMAL(10, 2))
+    status: Mapped[str] = mapped_column(String(32))
+    decision_note: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Cart(Base):
     __tablename__ = "carts"
 
@@ -184,7 +200,10 @@ class CartItem(Base):
 class Order(Base):
     __tablename__ = "orders"
     __table_args__ = (
-        CheckConstraint("status IN ('processing', 'in-transit', 'delivered', 'cancelled')", name="ck_orders_status"),
+        CheckConstraint(
+            "status IN ('processing', 'in-transit', 'delivered', 'cancelled', 'refunded')",
+            name="ck_orders_status",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -202,6 +221,12 @@ class Order(Base):
         back_populates="order",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def delivery_address(self) -> str | None:
+        if not self.delivery_entries:
+            return None
+        return self.delivery_entries[0].delivery_address
 
 
 class OrderItem(Base):
@@ -312,3 +337,16 @@ class DeliveryListEntry(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     order: Mapped["Order"] = relationship(back_populates="delivery_entries")
+    product: Mapped["Product | None"] = relationship()
+
+    @property
+    def order_status(self) -> str:
+        return self.order.status
+
+    @property
+    def order_created_at(self) -> datetime:
+        return self.order.created_at
+
+    @property
+    def product_name(self) -> str | None:
+        return self.product.name if self.product else None

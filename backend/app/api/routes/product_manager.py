@@ -77,8 +77,14 @@ def create_category(
     db.add(category)
     try:
         db.commit()
-    except IntegrityError:
+    except IntegrityError as error:
         db.rollback()
+        detail = str(getattr(error, "orig", error))
+        if "categories_pkey" in detail:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Category id sequence is out of sync. Please retry.",
+            )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Category name must be unique",

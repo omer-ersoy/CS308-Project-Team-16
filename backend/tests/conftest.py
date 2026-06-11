@@ -59,18 +59,24 @@ def sample_data(db_session: Session) -> dict[str, object]:
     admin = User(
         full_name="Admin User",
         email="admin@example.com",
+        tax_id="00000000001",
+        address="Admin Test Address",
         role="admin",
         hashed_password=hash_password("password123"),
     )
     customer = User(
         full_name="Customer User",
         email="customer@example.com",
+        tax_id="11111111110",
+        address="Customer Test Address, Istanbul",
         role="customer",
         hashed_password=hash_password("password123"),
     )
     other_customer = User(
         full_name="Other Customer",
         email="other@example.com",
+        tax_id="22222222220",
+        address="Other Customer Test Address, Ankara",
         role="customer",
         hashed_password=hash_password("password123"),
     )

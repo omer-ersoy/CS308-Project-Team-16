@@ -204,7 +204,8 @@ def checkout_cart(
                 product_id=item.product_id,
                 quantity=item.quantity,
                 total_price=item.unit_price * item.quantity,
-                delivery_address="Address pending",
+                delivery_address=current_user.address
+                or f"{current_user.full_name} delivery address, Customer #{current_user.id}",
                 completion_status=False,
             )
         )
