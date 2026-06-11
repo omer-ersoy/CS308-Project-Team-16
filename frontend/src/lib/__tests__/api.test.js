@@ -202,4 +202,57 @@ describe("api client", () => {
       body: undefined,
     });
   });
+
+  it("requests revenue analytics with date filters", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockJsonResponse({
+        order_count: 2,
+        total_revenue: "200.00",
+        average_order_value: "100.00",
+      }),
+    );
+
+    const result = await api.getRevenueSummary("sales-token", {
+      startDate: "2026-04-20",
+      endDate: "2026-04-22",
+    });
+
+    expect(result.total_revenue).toBe("200.00");
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${API_BASE_URL}/orders/analytics/revenue?start_date=2026-04-20&end_date=2026-04-22`,
+      {
+        headers: {
+          Authorization: "Bearer sales-token",
+        },
+        body: undefined,
+      },
+    );
+  });
+
+  it("requests profit-loss analytics with bearer auth", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockJsonResponse({
+        total_revenue: "140.00",
+        total_cost: "110.00",
+        total_profit: "40.00",
+        total_loss: "10.00",
+        net_profit: "30.00",
+      }),
+    );
+
+    await api.getProfitLossSummary("sales-token", {
+      startDate: "2026-05-01",
+      endDate: "2026-05-02",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${API_BASE_URL}/orders/analytics/profit-loss?start_date=2026-05-01&end_date=2026-05-02`,
+      {
+        headers: {
+          Authorization: "Bearer sales-token",
+        },
+        body: undefined,
+      },
+    );
+  });
 });

@@ -331,6 +331,34 @@ export const api = {
     return request("/orders/mine", { token });
   },
 
+  getRevenueSummary(token, params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.startDate) {
+      searchParams.set("start_date", params.startDate);
+    }
+    if (params.endDate) {
+      searchParams.set("end_date", params.endDate);
+    }
+    const queryString = searchParams.toString();
+    return request(`/orders/analytics/revenue${queryString ? `?${queryString}` : ""}`, {
+      token,
+    });
+  },
+
+  getProfitLossSummary(token, params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.startDate) {
+      searchParams.set("start_date", params.startDate);
+    }
+    if (params.endDate) {
+      searchParams.set("end_date", params.endDate);
+    }
+    const queryString = searchParams.toString();
+    return request(`/orders/analytics/profit-loss${queryString ? `?${queryString}` : ""}`, {
+      token,
+    });
+  },
+
   listSalesManagerInvoices(token, params = {}) {
     const searchParams = new URLSearchParams();
     if (params.startDate) {
