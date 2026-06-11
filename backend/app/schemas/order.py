@@ -10,6 +10,8 @@ class OrderItemRead(BaseModel):
     product_name: str
     quantity: int
     unit_price: Decimal
+    return_request_id: int | None = None
+    return_request_status: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CartItemRead(BaseModel):
@@ -13,8 +13,10 @@ class CartItemRead(BaseModel):
 
 
 class CartAddItem(BaseModel):
-    product_id: int
-    quantity: int = 1
+    product_id: int = Field(gt=0)
+    quantity: int = Field(default=1, gt=0)
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class CartRead(BaseModel):

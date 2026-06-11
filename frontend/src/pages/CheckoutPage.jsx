@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import PageShell from "../components/PageShell";
 import InvoiceActions from "../components/InvoiceActions";
 import { enrichInvoiceItems, formatInvoiceDate } from "../lib/invoicePdf";
+import { normalizeCardNumber, validateMockPayment } from "../lib/paymentValidation";
 
 function CheckoutPage({
   searchProps,
@@ -30,10 +31,9 @@ function CheckoutPage({
   const handleMockPayment = async () => {
     setError("");
 
-    const paymentFields = [cardName, cardNumber, expiry, cvv];
-
-    if (paymentFields.some((field) => field.trim().length < 3)) {
-      setError("Please enter at least 3 characters in each payment field.");
+    const validationError = validateMockPayment({ cardName, cardNumber, expiry, cvv });
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -112,7 +112,9 @@ function CheckoutPage({
                       type="text"
                       value={cardName}
                       onChange={(e) => setCardName(e.target.value)}
+                      autoComplete="cc-name"
                       minLength={3}
+                      maxLength={80}
                       required
                       className="w-full border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
                       placeholder="John Doe"
@@ -126,8 +128,11 @@ function CheckoutPage({
                     <input
                       type="text"
                       value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                      minLength={3}
+                      onChange={(e) => setCardNumber(normalizeCardNumber(e.target.value).slice(0, 19))}
+                      inputMode="numeric"
+                      autoComplete="cc-number"
+                      minLength={13}
+                      maxLength={19}
                       required
                       className="w-full border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
                       placeholder="1111 2222 3333 4444"
@@ -142,8 +147,12 @@ function CheckoutPage({
                       <input
                         type="text"
                         value={expiry}
-                        onChange={(e) => setExpiry(e.target.value)}
-                        minLength={3}
+                        onChange={(e) => setExpiry(e.target.value.replace(/[^\d/]/g, "").slice(0, 5))}
+                        inputMode="numeric"
+                        autoComplete="cc-exp"
+                        pattern="\\d{2}/\\d{2}"
+                        minLength={5}
+                        maxLength={5}
                         required
                         className="w-full border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
                         placeholder="MM/YY"
@@ -157,8 +166,11 @@ function CheckoutPage({
                       <input
                         type="text"
                         value={cvv}
-                        onChange={(e) => setCvv(e.target.value)}
+                        onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        inputMode="numeric"
+                        autoComplete="cc-csc"
                         minLength={3}
+                        maxLength={4}
                         required
                         className="w-full border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
                         placeholder="123"

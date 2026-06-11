@@ -1,6 +1,7 @@
 from decimal import Decimal
 from datetime import UTC, datetime
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -19,6 +20,14 @@ def calculate_total(cart: Cart) -> Decimal:
     return sum((item.unit_price * item.quantity for item in cart.items), start=Decimal("0.00"))
 
 
+def validate_cart_id(cart_id: int) -> None:
+    if cart_id <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cart id must be greater than zero.",
+        )
+
+
 def serialize_cart(cart: Cart) -> CartRead:
     return CartRead(
         id=cart.id,
@@ -32,6 +41,7 @@ def serialize_cart(cart: Cart) -> CartRead:
 
 
 def get_or_create_cart(db: Session, cart_id: int) -> Cart:
+    validate_cart_id(cart_id)
     cart = (
         db.query(Cart)
         .options(selectinload(Cart.items))
@@ -66,11 +76,6 @@ def add_item_to_cart(
     product = db.get(Product, payload.product_id)
     if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
-    if payload.quantity <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Quantity must be greater than zero.",
-        )
     if product.quantity_in_stock <= 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -130,15 +135,30 @@ def checkout_cart(
             detail="Cart is empty. Add items before checkout.",
         )
 
+    locked_products = {
+        product.id: product
+        for product in db.scalars(
+            select(Product)
+            .where(Product.id.in_({item.product_id for item in cart.items}))
+            .with_for_update()
+        ).all()
+    }
+
     for item in cart.items:
-        if item.product.quantity_in_stock < item.quantity:
+        product = locked_products.get(item.product_id)
+        if product is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Product #{item.product_id} is no longer available.",
+            )
+        if product.quantity_in_stock < item.quantity:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Insufficient stock for product #{item.product_id}.",
             )
 
     for item in cart.items:
-        item.product.quantity_in_stock -= item.quantity
+        locked_products[item.product_id].quantity_in_stock -= item.quantity
 
     now = datetime.now(UTC)
     order_id = f"ORD-{cart_id}-{int(now.timestamp())}"
@@ -146,7 +166,7 @@ def checkout_cart(
     invoice_items = [
         CheckoutInvoiceItem(
             product_id=item.product_id,
-            product_name=item.product.name,
+            product_name=locked_products[item.product_id].name,
             quantity=item.quantity,
             unit_price=item.unit_price,
             line_total=item.unit_price * item.quantity,
@@ -169,10 +189,10 @@ def checkout_cart(
             OrderItem(
                 order_id=order.id,
                 product_id=item.product_id,
-                product_name=item.product.name,
+                product_name=locked_products[item.product_id].name,
                 quantity=item.quantity,
                 unit_price=item.unit_price,
-                unit_cost=item.product.cost_price,
+                unit_cost=locked_products[item.product_id].cost_price,
             )
         )
 
