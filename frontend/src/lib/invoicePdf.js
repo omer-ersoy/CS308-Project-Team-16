@@ -74,11 +74,38 @@ export function formatInvoiceDate(value) {
 export function enrichInvoiceItems(invoice, productsByApiId) {
   return (invoice?.items ?? []).map((item) => {
     const product = productsByApiId?.get?.(item.product_id);
+    const lineTotal = item.line_total ?? Number(item.unit_price ?? 0) * Number(item.quantity ?? 0);
     return {
       ...item,
       product_name: item.product_name ?? product?.name ?? `Product #${item.product_id}`,
+      line_total: lineTotal,
     };
   });
+}
+
+export function orderToInvoice(order, customer = {}) {
+  const items = enrichInvoiceItems(
+    {
+      items: (order?.items ?? []).map((item) => ({
+        ...item,
+        line_total: Number(item.unit_price ?? 0) * Number(item.quantity ?? 0),
+      })),
+    },
+    null,
+  );
+  const itemCount = items.reduce((total, item) => total + Number(item.quantity ?? 0), 0);
+
+  return {
+    order_id: order?.order_id ?? `ORD-${order?.id}`,
+    db_order_id: order?.db_order_id ?? order?.id,
+    created_at: order?.created_at,
+    total_amount: order?.total_amount,
+    status: order?.status ?? "processing",
+    item_count: order?.item_count ?? itemCount,
+    items,
+    customer_name: order?.customer_name ?? customer.full_name ?? "Customer",
+    customer_email: order?.customer_email ?? customer.email ?? "",
+  };
 }
 
 export function buildInvoicePdfDataUrl(invoice, productsByApiId) {

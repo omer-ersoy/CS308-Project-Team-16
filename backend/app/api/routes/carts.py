@@ -172,6 +172,7 @@ def checkout_cart(
                 product_name=item.product.name,
                 quantity=item.quantity,
                 unit_price=item.unit_price,
+                unit_cost=item.product.cost_price,
             )
         )
 

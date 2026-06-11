@@ -243,7 +243,7 @@ function SalesManagerPage() {
           onProductsUpdated={handleProductsUpdated}
         />
         <InvoiceTable token={token} />
-        <SalesAnalytics />
+        <SalesAnalytics token={token} />
       </div>
     </div>
   );
