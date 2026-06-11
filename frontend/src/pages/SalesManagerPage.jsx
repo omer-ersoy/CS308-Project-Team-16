@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import DiscountManager from "../components/DiscountManager";
 import InvoiceTable from "../components/InvoiceTable";
+import RefundEvaluation from "../components/RefundEvaluation";
 import SalesAnalytics from "../components/SalesAnalytics";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../lib/api";
@@ -242,6 +243,7 @@ function SalesManagerPage() {
           token={token}
           onProductsUpdated={handleProductsUpdated}
         />
+        <RefundEvaluation token={token} />
         <InvoiceTable token={token} />
         <SalesAnalytics token={token} />
       </div>

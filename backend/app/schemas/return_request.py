@@ -33,5 +33,9 @@ class ReturnRequestRead(BaseModel):
     evaluated_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    product_name: str
+    customer_name: str | None = None
+    customer_email: str | None = None
+    order_created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

@@ -269,6 +269,22 @@ class ReturnRequest(Base):
         foreign_keys=[evaluated_by_id],
     )
 
+    @property
+    def product_name(self) -> str:
+        return self.order_item.product_name
+
+    @property
+    def customer_name(self) -> str | None:
+        return self.customer.full_name if self.customer else None
+
+    @property
+    def customer_email(self) -> str | None:
+        return self.customer.email if self.customer else None
+
+    @property
+    def order_created_at(self) -> datetime:
+        return self.order.created_at
+
 
 class DeliveryListEntry(Base):
     __tablename__ = "delivery_list_entries"

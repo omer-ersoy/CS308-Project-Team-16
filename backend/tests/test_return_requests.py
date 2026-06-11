@@ -5,8 +5,41 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
-from app.db.models import Order, OrderItem, ReturnRequest
+from app.core.security import hash_password
+from app.db.models import Order, OrderItem, ReturnRequest, User
 from tests.conftest import auth_headers
+
+
+def create_sales_manager(db_session) -> User:
+    sales_manager = User(
+        full_name="Sales Manager",
+        email="sales@example.com",
+        role="sales_manager",
+        hashed_password=hash_password("password123"),
+    )
+    db_session.add(sales_manager)
+    db_session.commit()
+    return sales_manager
+
+
+def create_pending_return_request(db_session, sample_data: dict[str, object]) -> ReturnRequest:
+    customer = sample_data["customer"]
+    product = sample_data["product"]
+    order = db_session.query(Order).filter_by(user_id=customer.id, status="delivered").one()
+    order_item = db_session.query(OrderItem).filter_by(order_id=order.id).one()
+    return_request = ReturnRequest(
+        order_id=order.id,
+        order_item_id=order_item.id,
+        customer_id=customer.id,
+        product_id=product.id,
+        quantity=order_item.quantity,
+        reason="Damaged package.",
+        refund_amount=order_item.unit_price * order_item.quantity,
+    )
+    db_session.add(return_request)
+    db_session.commit()
+    db_session.refresh(return_request)
+    return return_request
 
 
 def test_return_request_model_links_to_purchased_order_item(
@@ -148,3 +181,95 @@ def test_return_request_rejects_duplicate_request(
     assert first_response.status_code == 201
     assert second_response.status_code == 409
     assert second_response.json()["detail"] == "A return request already exists for this product."
+
+
+def test_sales_manager_can_list_pending_return_requests(
+    client: TestClient,
+    db_session,
+    sample_data: dict[str, object],
+) -> None:
+    sales_manager = create_sales_manager(db_session)
+    return_request = create_pending_return_request(db_session, sample_data)
+
+    response = client.get("/api/returns", headers=auth_headers(sales_manager))
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) == 1
+    assert payload[0]["id"] == return_request.id
+    assert payload[0]["status"] == "pending"
+    assert payload[0]["product_name"] == "Bleu de Chanel"
+    assert payload[0]["customer_email"] == "customer@example.com"
+
+
+def test_customer_cannot_list_return_requests_for_evaluation(
+    client: TestClient,
+    sample_data: dict[str, object],
+) -> None:
+    customer = sample_data["customer"]
+
+    response = client.get("/api/returns", headers=auth_headers(customer))
+
+    assert response.status_code == 403
+
+
+def test_sales_manager_can_approve_return_request(
+    client: TestClient,
+    db_session,
+    sample_data: dict[str, object],
+) -> None:
+    sales_manager = create_sales_manager(db_session)
+    return_request = create_pending_return_request(db_session, sample_data)
+
+    response = client.post(
+        f"/api/returns/{return_request.id}/approve",
+        headers=auth_headers(sales_manager),
+        json={"decision_note": "Approved after review."},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "approved"
+    assert payload["decision_note"] == "Approved after review."
+    assert payload["evaluated_by_id"] == sales_manager.id
+    assert payload["evaluated_at"] is not None
+
+
+def test_sales_manager_can_reject_return_request(
+    client: TestClient,
+    db_session,
+    sample_data: dict[str, object],
+) -> None:
+    sales_manager = create_sales_manager(db_session)
+    return_request = create_pending_return_request(db_session, sample_data)
+
+    response = client.post(
+        f"/api/returns/{return_request.id}/reject",
+        headers=auth_headers(sales_manager),
+        json={"decision_note": "Outside policy."},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "rejected"
+    assert payload["decision_note"] == "Outside policy."
+
+
+def test_approved_return_request_cannot_be_evaluated_again(
+    client: TestClient,
+    db_session,
+    sample_data: dict[str, object],
+) -> None:
+    sales_manager = create_sales_manager(db_session)
+    return_request = create_pending_return_request(db_session, sample_data)
+    return_request.status = "approved"
+    db_session.commit()
+
+    response = client.post(
+        f"/api/returns/{return_request.id}/reject",
+        headers=auth_headers(sales_manager),
+        json={},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Only pending return requests can be evaluated."
