@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import InvoiceActions from "./InvoiceActions";
 import { api } from "../lib/api";
+import { orderToInvoice } from "../lib/invoicePdf";
 
 function money(value) {
   return `${Number(value ?? 0).toFixed(2)} USD`;
@@ -150,6 +152,7 @@ function InvoiceTable({ token = "" }) {
                 <th className="px-4">Items</th>
                 <th className="px-4">Total</th>
                 <th className="px-4">Status</th>
+                <th className="px-4">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -163,6 +166,14 @@ function InvoiceTable({ token = "" }) {
                   <td className="px-4 py-4">{getItemCount(invoice)}</td>
                   <td className="px-4 py-4">{money(invoice.total_amount)}</td>
                   <td className="px-4 py-4 capitalize">{invoice.status}</td>
+                  <td className="px-4 py-4">
+                    <InvoiceActions
+                      invoice={orderToInvoice(invoice, {
+                        full_name: invoice.user_id ? `Customer #${invoice.user_id}` : "Guest customer",
+                      })}
+                      compact
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>

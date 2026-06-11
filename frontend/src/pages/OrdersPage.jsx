@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import InvoiceActions from "../components/InvoiceActions";
 import PageShell from "../components/PageShell";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../lib/api";
@@ -31,7 +32,7 @@ function formatOrderDate(value) {
 }
 
 function OrdersPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick }) {
-  const { token, isLoggedIn, openAuth } = useAuth();
+  const { token, isLoggedIn, openAuth, currentUser } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -133,9 +134,14 @@ function OrdersPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick
                     ))}
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 text-sm">
-                    <span className="text-slate-500">Total</span>
-                    <span className="font-medium text-slate-900">{Number(order.total_amount).toFixed(2)} USD</span>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-4 text-sm">
+                    <span className="text-slate-500">
+                      Total{" "}
+                      <span className="font-medium text-slate-900">
+                        {Number(order.total_amount).toFixed(2)} USD
+                      </span>
+                    </span>
+                    <InvoiceActions order={order} customer={currentUser} compact />
                   </div>
                 </article>
               ))}

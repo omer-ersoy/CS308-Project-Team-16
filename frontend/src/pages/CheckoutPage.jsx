@@ -2,11 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import PageShell from "../components/PageShell";
-import {
-  buildInvoicePdfDataUrl,
-  enrichInvoiceItems,
-  formatInvoiceDate,
-} from "../lib/invoicePdf";
+import InvoiceActions from "../components/InvoiceActions";
+import { enrichInvoiceItems, formatInvoiceDate } from "../lib/invoicePdf";
 
 function CheckoutPage({
   searchProps,
@@ -30,8 +27,6 @@ function CheckoutPage({
   const [error, setError] = useState("");
   const productsByApiId = new Map(products.map((product) => [product.apiId, product]));
   const invoiceItems = enrichInvoiceItems(invoice, productsByApiId);
-  const invoicePdfUrl = invoice ? buildInvoicePdfDataUrl(invoice, productsByApiId) : "";
-
   const handleMockPayment = async () => {
     setError("");
 
@@ -262,13 +257,11 @@ function CheckoutPage({
                   </div>
 
                   <div className="flex flex-col gap-6 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-                    <a
-                      href={invoicePdfUrl}
-                      download={`${invoice.order_id}-invoice.pdf`}
-                      className="rounded-full border border-slate-300 bg-white px-5 py-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-700 transition hover:border-slate-500 hover:text-slate-950"
-                    >
-                      Download Invoice PDF
-                    </a>
+                    <InvoiceActions
+                      invoice={invoice}
+                      productsByApiId={productsByApiId}
+                      customer={currentUser}
+                    />
                     <div className="text-right">
                       <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Total paid</p>
                       <p className="mt-2 text-2xl font-light tracking-tight text-slate-900">
