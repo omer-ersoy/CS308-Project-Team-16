@@ -2,14 +2,14 @@ from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_sales_manager_user
-from app.db.models import Order
+from app.db.models import Order, OrderItem
 from app.db.session import get_db
-from app.schemas.analytics import RevenueSummaryRead
+from app.schemas.analytics import ProfitLossSummaryRead, RevenueSummaryRead
 from app.schemas.user import UserRead
 
 
@@ -66,4 +66,67 @@ def get_revenue_summary(
         order_count=order_count,
         total_revenue=total_revenue,
         average_order_value=average_order_value,
+    )
+
+
+def get_orders_with_items(
+    db: Session,
+    start_date: date | None,
+    end_date: date | None,
+) -> list[Order]:
+    query = select(Order).options(selectinload(Order.items))
+    query = apply_date_filters(query, start_date, end_date)
+    return db.scalars(query.order_by(Order.created_at.asc(), Order.id.asc())).all()
+
+
+def summarize_line_items(items: list[OrderItem]) -> tuple[Decimal, Decimal, Decimal, Decimal]:
+    total_revenue = Decimal("0.00")
+    total_cost = Decimal("0.00")
+    total_profit = Decimal("0.00")
+    total_loss = Decimal("0.00")
+
+    for item in items:
+        line_revenue = item.unit_price * item.quantity
+        line_cost = item.unit_cost * item.quantity
+        line_margin = line_revenue - line_cost
+        total_revenue += line_revenue
+        total_cost += line_cost
+        if line_margin >= 0:
+            total_profit += line_margin
+        else:
+            total_loss += abs(line_margin)
+
+    return total_revenue, total_cost, total_profit, total_loss
+
+
+@router.get("/profit-loss", response_model=ProfitLossSummaryRead)
+def get_profit_loss_summary(
+    start_date: date | None = None,
+    end_date: date | None = None,
+    _: UserRead = Depends(get_sales_manager_user),
+    db: Session = Depends(get_db),
+) -> ProfitLossSummaryRead:
+    validate_date_range(start_date, end_date)
+
+    orders = get_orders_with_items(db, start_date, end_date)
+    total_revenue = Decimal("0.00")
+    total_cost = Decimal("0.00")
+    total_profit = Decimal("0.00")
+    total_loss = Decimal("0.00")
+
+    for order in orders:
+        revenue, cost, profit, loss = summarize_line_items(order.items)
+        total_revenue += revenue
+        total_cost += cost
+        total_profit += profit
+        total_loss += loss
+
+    return ProfitLossSummaryRead(
+        start_date=start_date,
+        end_date=end_date,
+        total_revenue=total_revenue,
+        total_cost=total_cost,
+        total_profit=total_profit,
+        total_loss=total_loss,
+        net_profit=total_revenue - total_cost,
     )

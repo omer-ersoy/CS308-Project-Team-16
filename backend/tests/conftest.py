@@ -85,6 +85,7 @@ def sample_data(db_session: Session) -> dict[str, object]:
         description="Woody aromatic fragrance",
         quantity_in_stock=12,
         price=Decimal("129.99"),
+        cost_price=Decimal("80.00"),
         warranty_status="Valid",
         distributor_info="Chanel",
         category_id=category.id,
@@ -104,6 +105,7 @@ def sample_data(db_session: Session) -> dict[str, object]:
                 product_name=product.name,
                 quantity=1,
                 unit_price=product.price,
+                unit_cost=product.cost_price,
             ),
             OrderItem(
                 order_id=other_customer_order.id,
@@ -111,6 +113,7 @@ def sample_data(db_session: Session) -> dict[str, object]:
                 product_name=product.name,
                 quantity=1,
                 unit_price=product.price,
+                unit_cost=product.cost_price,
             ),
         ]
     )

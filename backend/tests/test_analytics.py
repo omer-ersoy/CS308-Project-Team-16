@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from conftest import auth_headers
 from app.core.security import hash_password
-from app.db.models import Order, User
+from app.db.models import Order, OrderItem, User
 
 
 def create_sales_manager(db_session: Session) -> User:
@@ -128,6 +128,102 @@ def test_customer_cannot_access_revenue_summary(
 
     response = client.get(
         "/api/orders/analytics/revenue?start_date=2026-04-20&end_date=2026-04-22",
+        headers=auth_headers(customer),
+    )
+
+    assert response.status_code == 403
+
+
+def create_order_with_items(
+    db_session: Session,
+    *,
+    user_id: int,
+    created_at: datetime,
+    unit_price: Decimal,
+    unit_cost: Decimal,
+    quantity: int = 1,
+) -> Order:
+    order = Order(
+        user_id=user_id,
+        status="processing",
+        total_amount=unit_price * quantity,
+        created_at=created_at,
+    )
+    db_session.add(order)
+    db_session.flush()
+    db_session.add(
+        OrderItem(
+            order_id=order.id,
+            product_id=None,
+            product_name="Analytics Product",
+            quantity=quantity,
+            unit_price=unit_price,
+            unit_cost=unit_cost,
+        )
+    )
+    db_session.commit()
+    return order
+
+
+def test_profit_loss_summary_calculates_margin_and_loss(
+    client: TestClient,
+    db_session: Session,
+    sample_data: dict[str, object],
+) -> None:
+    customer = sample_data["customer"]
+    sales_manager = create_sales_manager(db_session)
+
+    create_order_with_items(
+        db_session,
+        user_id=customer.id,
+        created_at=datetime(2026, 5, 1, 10, 0, tzinfo=UTC),
+        unit_price=Decimal("100.00"),
+        unit_cost=Decimal("60.00"),
+    )
+    create_order_with_items(
+        db_session,
+        user_id=customer.id,
+        created_at=datetime(2026, 5, 2, 10, 0, tzinfo=UTC),
+        unit_price=Decimal("40.00"),
+        unit_cost=Decimal("50.00"),
+    )
+
+    response = client.get(
+        "/api/orders/analytics/profit-loss?start_date=2026-05-01&end_date=2026-05-02",
+        headers=auth_headers(sales_manager),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert Decimal(payload["total_revenue"]) == Decimal("140.00")
+    assert Decimal(payload["total_cost"]) == Decimal("110.00")
+    assert Decimal(payload["total_profit"]) == Decimal("40.00")
+    assert Decimal(payload["total_loss"]) == Decimal("10.00")
+    assert Decimal(payload["net_profit"]) == Decimal("30.00")
+
+
+def test_profit_loss_summary_rejects_invalid_date_range(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    sales_manager = create_sales_manager(db_session)
+
+    response = client.get(
+        "/api/orders/analytics/profit-loss?start_date=2026-05-03&end_date=2026-05-01",
+        headers=auth_headers(sales_manager),
+    )
+
+    assert response.status_code == 400
+
+
+def test_customer_cannot_access_profit_loss_summary(
+    client: TestClient,
+    sample_data: dict[str, object],
+) -> None:
+    customer = sample_data["customer"]
+
+    response = client.get(
+        "/api/orders/analytics/profit-loss?start_date=2026-05-01&end_date=2026-05-02",
         headers=auth_headers(customer),
     )
 

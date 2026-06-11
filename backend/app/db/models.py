@@ -55,6 +55,7 @@ class Product(Base):
     description: Mapped[str] = mapped_column(Text())
     quantity_in_stock: Mapped[int] = mapped_column(Integer)
     price: Mapped[Decimal] = mapped_column(DECIMAL(10, 2))
+    cost_price: Mapped[Decimal] = mapped_column(DECIMAL(10, 2), default=Decimal("0.00"), server_default="0")
     warranty_status: Mapped[str] = mapped_column(String(255))
     distributor_info: Mapped[str] = mapped_column(String(255))
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id", ondelete="RESTRICT"))
@@ -198,6 +199,7 @@ class OrderItem(Base):
     product_name: Mapped[str] = mapped_column(String(255))
     quantity: Mapped[int] = mapped_column(Integer)
     unit_price: Mapped[Decimal] = mapped_column(DECIMAL(10, 2))
+    unit_cost: Mapped[Decimal] = mapped_column(DECIMAL(10, 2), default=Decimal("0.00"), server_default="0")
 
     order: Mapped["Order"] = relationship(back_populates="items")
 

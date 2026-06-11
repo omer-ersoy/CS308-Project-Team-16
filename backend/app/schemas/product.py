@@ -10,6 +10,7 @@ class ProductBase(BaseModel):
     description: str
     quantity_in_stock: int
     price: Decimal
+    cost_price: Decimal = Field(default=Decimal("0"), ge=0)
     warranty_status: str
     distributor_info: str
     category_id: int
@@ -36,6 +37,7 @@ class ProductUpdate(BaseModel):
     description: str | None = None
     quantity_in_stock: int | None = None
     price: Decimal | None = Field(default=None, gt=0)
+    cost_price: Decimal | None = Field(default=None, ge=0)
     warranty_status: str | None = None
     distributor_info: str | None = None
     category_id: int | None = None
@@ -49,6 +51,7 @@ class ProductManagerProductUpdate(BaseModel):
     serial_number: str | None = None
     description: str | None = None
     price: Decimal | None = Field(default=None, gt=0)
+    cost_price: Decimal | None = Field(default=None, ge=0)
     warranty_status: str | None = None
     distributor_info: str | None = None
     category_id: int | None = None
