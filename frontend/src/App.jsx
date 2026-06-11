@@ -21,6 +21,7 @@ import BoughtProductStatusPage from "./pages/BoughtProductStatusPage";
 import { api } from "./lib/api";
 import { adaptProduct } from "./lib/productAdapter";
 import ProductManagerPage from "./pages/ProductManagerPage";
+import ProductManagerReviewsPage from "./pages/ProductManagerReviewsPage";
 
 const CART_ID = 1;
 const WISHLIST_STORAGE_KEY = "wishlist-product-ids";
@@ -988,6 +989,14 @@ function AppContent() {
           <Route
             path="/product-manager"
             element={<ProductManagerRoute onCatalogChange={handleCatalogChange} />}
+          />
+          <Route
+            path="/product-manager/reviews"
+            element={
+              <ProtectedRoute allowedRoles={["product_manager", "admin"]}>
+                <ProductManagerReviewsPage />
+              </ProtectedRoute>
+            }
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

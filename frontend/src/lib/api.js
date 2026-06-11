@@ -184,6 +184,18 @@ export const api = {
     });
   },
 
+  listPendingReviews(token) {
+    return request("/product-manager/reviews/pending", { token });
+  },
+
+  updateReviewStatus(token, reviewId, payload) {
+    return request(`/product-manager/reviews/${reviewId}`, {
+      method: "PATCH",
+      token,
+      body: payload,
+    });
+  },
+
   getCart(cartId) {
     return request(`/carts/${cartId}`);
   },

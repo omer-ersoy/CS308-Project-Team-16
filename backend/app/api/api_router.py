@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import admin, analytics, auth, carts, categories, notifications, orders, product_manager, products, returns, reviews, users, wishlist
+from app.api.routes import admin, analytics, auth, carts, categories, notifications, orders, product_manager, product_manager_reviews, products, returns, reviews, users, wishlist
 
 
 api_router = APIRouter()
@@ -21,6 +21,11 @@ api_router.include_router(
 )
 api_router.include_router(
     product_manager.router,
+    prefix="/product-manager",
+    tags=["product-manager"],
+)
+api_router.include_router(
+    product_manager_reviews.router,
     prefix="/product-manager",
     tags=["product-manager"],
 )
