@@ -165,6 +165,44 @@ def test_review_create_allows_rating_without_comment_and_lists_for_admin(
     assert any(admin_review["id"] == review["id"] for admin_review in admin_response.json())
 
 
+def test_review_create_allows_refunded_purchase(
+    client: TestClient,
+    db_session: Session,
+    sample_data: dict[str, object],
+) -> None:
+    product = sample_data["product"]
+    new_customer = User(
+        full_name="Refunded Customer",
+        email="refunded-review@example.com",
+        role="customer",
+        hashed_password=hash_password("password123"),
+    )
+    db_session.add(new_customer)
+    db_session.flush()
+    order = Order(user_id=new_customer.id, status="refunded", total_amount=product.price)
+    db_session.add(order)
+    db_session.flush()
+    db_session.add(
+        OrderItem(
+            order_id=order.id,
+            product_id=product.id,
+            product_name=product.name,
+            quantity=1,
+            unit_price=product.price,
+        )
+    )
+    db_session.commit()
+
+    response = client.post(
+        f"/api/products/{product.id}/reviews",
+        headers=auth_headers(new_customer),
+        json={"rating": 5, "comment": "Reviewed after refund."},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["status"] == "pending"
+
+
 def test_review_create_requires_delivered_purchase(
     client: TestClient,
     db_session: Session,

@@ -18,10 +18,12 @@ import SalesManagerPage from "./pages/SalesManagerPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import OrdersPage from "./pages/OrdersPage";
 import BoughtProductStatusPage from "./pages/BoughtProductStatusPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import { api } from "./lib/api";
 import { adaptProduct } from "./lib/productAdapter";
 import ProductManagerPage from "./pages/ProductManagerPage";
 import ProductManagerReviewsPage from "./pages/ProductManagerReviewsPage";
+import ProductManagerDeliveryPage from "./pages/ProductManagerDeliveryPage";
 
 const CART_ID = 1;
 const WISHLIST_STORAGE_KEY = "wishlist-product-ids";
@@ -343,6 +345,7 @@ function AppContent() {
   const [wishlistHydrated, setWishlistHydrated] = useState(false);
   const [wishlistSyncError, setWishlistSyncError] = useState("");
   const [discountNotifications, setDiscountNotifications] = useState([]);
+  const [refundNotifications, setRefundNotifications] = useState([]);
   const [discountNotificationsLoading, setDiscountNotificationsLoading] = useState(false);
   const [discountNotificationsError, setDiscountNotificationsError] = useState("");
   const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -375,6 +378,7 @@ function AppContent() {
     if (!token || !currentUser?.id) {
       syncedWishlistUserId.current = null;
       setDiscountNotifications([]);
+      setRefundNotifications([]);
       setDiscountNotificationsError("");
       setDiscountNotificationsLoading(false);
       return undefined;
@@ -400,15 +404,17 @@ function AppContent() {
           localProductIds.map((productId) => api.addWishlistItem(token, productId)),
         );
 
-        const [wishlistItems, notifications] = await Promise.all([
+        const [wishlistItems, notifications, refundUpdates] = await Promise.all([
           api.listWishlist(token),
           api.listDiscountNotifications(token),
+          api.listRefundNotifications(token),
         ]);
 
         if (!isMounted) return;
 
         setWishlistIds(wishlistItems.map((item) => String(item.product.id)));
         setDiscountNotifications(notifications);
+        setRefundNotifications(refundUpdates);
         syncedWishlistUserId.current = currentUser.id;
       } catch (error) {
         if (!isMounted) return;
@@ -544,6 +550,9 @@ function AppContent() {
       ? "success"
       : "empty"
     : "idle";
+  const notificationUnreadCount =
+    discountNotifications.filter((notification) => !notification.is_read).length +
+    refundNotifications.filter((notification) => !notification.is_read).length;
 
   const searchProps = {
     searchValue,
@@ -551,6 +560,7 @@ function AppContent() {
     onClearSearch: () => setSearchValue(""),
     searchResultCount: filteredProducts.length,
     searchStatus,
+    notificationCount: notificationUnreadCount,
   };
 
   const isCatalogLoading = catalogStatus === "loading";
@@ -662,13 +672,50 @@ function AppContent() {
     }
 
     try {
-      const notifications = await api.markDiscountNotificationsRead(token);
+      const [notifications, refundUpdates] = await Promise.all([
+        api.markDiscountNotificationsRead(token),
+        api.markRefundNotificationsRead(token),
+      ]);
       setDiscountNotifications(notifications);
+      setRefundNotifications(refundUpdates);
       setDiscountNotificationsError("");
     } catch (error) {
       setDiscountNotificationsError(error.message);
     }
   }, [token]);
+
+  const refreshNotifications = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
+    setDiscountNotificationsLoading(true);
+    setDiscountNotificationsError("");
+    try {
+      const [notifications, refundUpdates] = await Promise.all([
+        api.listDiscountNotifications(token),
+        api.listRefundNotifications(token),
+      ]);
+      setDiscountNotifications(notifications);
+      setRefundNotifications(refundUpdates);
+    } catch (error) {
+      setDiscountNotificationsError(error.message);
+    } finally {
+      setDiscountNotificationsLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (!token || currentUser?.role !== "customer") {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      refreshNotifications();
+    }, 10000);
+
+    return () => window.clearInterval(intervalId);
+  }, [currentUser?.role, refreshNotifications, token]);
 
   const sendInvoiceEmail = useCallback(
     async (invoice) => {
@@ -925,6 +972,25 @@ function AppContent() {
             }
           />
           <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute allowedRoles={["customer", "admin"]}>
+                <NotificationsPage
+                  searchProps={searchProps}
+                  discountNotifications={discountNotifications}
+                  refundNotifications={refundNotifications}
+                  loading={discountNotificationsLoading}
+                  error={discountNotificationsError}
+                  onRefresh={refreshNotifications}
+                  onMarkAllRead={handleMarkDiscountNotificationsRead}
+                  cartCount={cartCount}
+                  wishlistCount={wishlistCount}
+                  onCartClick={() => setCartOpen(true)}
+                />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/orders"
             element={
               <OrdersRoute
@@ -994,7 +1060,25 @@ function AppContent() {
             path="/product-manager/reviews"
             element={
               <ProtectedRoute allowedRoles={["product_manager", "admin"]}>
-                <ProductManagerReviewsPage />
+                <ProductManagerReviewsPage
+                  searchProps={searchProps}
+                  cartCount={cartCount}
+                  wishlistCount={wishlistCount}
+                  onCartClick={() => setCartOpen(true)}
+                />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/product-manager/deliveries"
+            element={
+              <ProtectedRoute allowedRoles={["product_manager", "admin"]}>
+                <ProductManagerDeliveryPage
+                  searchProps={searchProps}
+                  cartCount={cartCount}
+                  wishlistCount={wishlistCount}
+                  onCartClick={() => setCartOpen(true)}
+                />
               </ProtectedRoute>
             }
           />

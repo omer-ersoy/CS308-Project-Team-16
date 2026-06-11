@@ -8,6 +8,7 @@ const ORDER_STATUS_LABELS = {
   "in-transit": "In Transit",
   delivered: "Delivered",
   cancelled: "Cancelled",
+  refunded: "Refunded",
 };
 
 const ORDER_STATUS_CLASSES = {
@@ -15,6 +16,7 @@ const ORDER_STATUS_CLASSES = {
   "in-transit": "border-sky-200 bg-sky-50 text-sky-700",
   delivered: "border-emerald-200 bg-emerald-50 text-emerald-700",
   cancelled: "border-rose-200 bg-rose-50 text-rose-700",
+  refunded: "border-violet-200 bg-violet-50 text-violet-700",
 };
 
 const STATUS_STEPS = ["processing", "in-transit", "delivered"];
@@ -52,6 +54,25 @@ function getReturnEligibility(item) {
   return Date.now() <= purchasedAt.getTime() + RETURN_WINDOW_MS;
 }
 
+function getRefundDisabledReason(item) {
+  if (item.return_request_status) {
+    return "Refund request already created.";
+  }
+  if (item.orderStatus !== "delivered") {
+    return "Refund is available after delivery.";
+  }
+
+  const purchasedAt = new Date(item.orderCreatedAt);
+  if (Number.isNaN(purchasedAt.getTime())) {
+    return "Purchase date is unavailable.";
+  }
+  if (Date.now() > purchasedAt.getTime() + RETURN_WINDOW_MS) {
+    return "Refund window expired.";
+  }
+
+  return "";
+}
+
 function BoughtProductStatusPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick }) {
   const { token, isLoggedIn, openAuth } = useAuth();
   const [orders, setOrders] = useState([]);
@@ -61,6 +82,7 @@ function BoughtProductStatusPage({ searchProps, cartCount = 0, wishlistCount = 0
   const [returnError, setReturnError] = useState("");
   const [returnReasons, setReturnReasons] = useState({});
   const [submittingReturnItemId, setSubmittingReturnItemId] = useState(null);
+  const [cancelingOrderId, setCancelingOrderId] = useState(null);
 
   const loadOrders = useCallback(
     async ({ silent = false } = {}) => {
@@ -114,6 +136,7 @@ function BoughtProductStatusPage({ searchProps, cartCount = 0, wishlistCount = 0
           orderId: order.id,
           orderStatus: order.status,
           orderCreatedAt: order.created_at,
+          orderDeliveryAddress: order.delivery_address,
         })),
       ),
     [orders],
@@ -147,6 +170,26 @@ function BoughtProductStatusPage({ searchProps, cartCount = 0, wishlistCount = 0
       setReturnError(err.message);
     } finally {
       setSubmittingReturnItemId(null);
+    }
+  }
+
+  async function handleCancelOrder(orderId) {
+    const confirmed = window.confirm("Cancel this purchase?");
+    if (!confirmed) {
+      return;
+    }
+
+    setReturnError("");
+    setCancelingOrderId(orderId);
+    try {
+      const updatedOrder = await api.cancelMyOrder(token, orderId);
+      setOrders((currentOrders) =>
+        currentOrders.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)),
+      );
+    } catch (err) {
+      setReturnError(err.message);
+    } finally {
+      setCancelingOrderId(null);
     }
   }
 
@@ -209,6 +252,7 @@ function BoughtProductStatusPage({ searchProps, cartCount = 0, wishlistCount = 0
               {purchasedItems.map((item) => {
                 const currentStep = statusStepIndex(item.orderStatus);
                 const canRequestReturn = getReturnEligibility(item);
+                const refundDisabledReason = getRefundDisabledReason(item);
 
                 return (
                   <article key={`${item.orderId}-${item.id}`} className="border border-slate-200 bg-white p-6">
@@ -219,7 +263,11 @@ function BoughtProductStatusPage({ searchProps, cartCount = 0, wishlistCount = 0
                         </p>
                         <h2 className="mt-2 text-xl font-medium text-slate-800">{item.product_name}</h2>
                         <p className="mt-1 text-sm text-slate-500">
-                          {formatOrderDate(item.orderCreatedAt)} · Quantity {item.quantity}
+                          Purchased {formatOrderDate(item.orderCreatedAt)} · Quantity {item.quantity}
+                        </p>
+                        <p className="mt-2 max-w-2xl text-sm text-slate-600">
+                          <span className="font-medium text-slate-700">Delivery address:</span>{" "}
+                          {item.orderDeliveryAddress ?? "-"}
                         </p>
                       </div>
                       <span
@@ -253,12 +301,24 @@ function BoughtProductStatusPage({ searchProps, cartCount = 0, wishlistCount = 0
                       <div className="mt-5 inline-flex border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] tracking-[0.18em] text-slate-600 uppercase">
                         Return {item.return_request_status}
                       </div>
-                    ) : canRequestReturn ? (
+                    ) : item.orderStatus === "processing" ? (
+                      <div className="mt-5 border-t border-slate-100 pt-5">
+                        <button
+                          type="button"
+                          onClick={() => handleCancelOrder(item.orderId)}
+                          disabled={cancelingOrderId === item.orderId}
+                          className="border border-rose-200 px-5 py-3 text-xs tracking-[0.18em] text-rose-700 uppercase transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {cancelingOrderId === item.orderId ? "Cancelling" : "Cancel the purchase"}
+                        </button>
+                      </div>
+                    ) : ["in-transit", "delivered"].includes(item.orderStatus) ? (
                       <div className="mt-5 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-[1fr_auto] sm:items-end">
                         <label className="grid gap-2 text-xs tracking-[0.18em] text-slate-500 uppercase">
                           Reason
                           <textarea
                             value={returnReasons[item.id] ?? ""}
+                            disabled={!canRequestReturn || submittingReturnItemId === item.id}
                             onChange={(event) =>
                               setReturnReasons((currentReasons) => ({
                                 ...currentReasons,
@@ -267,17 +327,22 @@ function BoughtProductStatusPage({ searchProps, cartCount = 0, wishlistCount = 0
                             }
                             rows={2}
                             maxLength={500}
-                            className="min-h-20 resize-y border border-slate-200 px-3 py-2 text-sm normal-case tracking-normal text-slate-700 outline-none focus:border-slate-500"
+                            className="min-h-20 resize-y border border-slate-200 px-3 py-2 text-sm normal-case tracking-normal text-slate-700 outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                             placeholder="Optional"
                           />
+                          {!canRequestReturn && refundDisabledReason ? (
+                            <span className="text-[11px] tracking-normal text-slate-400 normal-case">
+                              {refundDisabledReason}
+                            </span>
+                          ) : null}
                         </label>
                         <button
                           type="button"
                           onClick={() => handleCreateReturnRequest(item)}
-                          disabled={submittingReturnItemId === item.id}
-                          className="border border-slate-900 bg-slate-900 px-5 py-3 text-xs tracking-[0.18em] text-white uppercase transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={!canRequestReturn || submittingReturnItemId === item.id}
+                          className="border border-slate-900 bg-slate-900 px-5 py-3 text-xs tracking-[0.18em] text-white uppercase transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                         >
-                          {submittingReturnItemId === item.id ? "Submitting" : "Request return"}
+                          {submittingReturnItemId === item.id ? "Submitting" : "Refund"}
                         </button>
                       </div>
                     ) : null}

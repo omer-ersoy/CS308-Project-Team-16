@@ -30,6 +30,8 @@ const orderStatuses = [
   { value: "processing", label: "Processing" },
   { value: "in-transit", label: "In Transit" },
   { value: "delivered", label: "Delivered" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "refunded", label: "Refunded" },
 ];
 const orderStatusLabels = Object.fromEntries(
   orderStatuses.map((s) => [s.value, s.label]),
@@ -38,6 +40,8 @@ const orderStatusClasses = {
   processing: "border-amber-200 bg-amber-50 text-amber-700",
   "in-transit": "border-sky-200 bg-sky-50 text-sky-700",
   delivered: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  cancelled: "border-rose-200 bg-rose-50 text-rose-700",
+  refunded: "border-violet-200 bg-violet-50 text-violet-700",
 };
 
 const emptyProductForm = {

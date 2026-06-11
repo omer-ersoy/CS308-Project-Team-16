@@ -22,6 +22,7 @@ class OrderRead(BaseModel):
     status: str
     total_amount: Decimal
     created_at: datetime
+    delivery_address: str | None = None
     items: list[OrderItemRead]
 
     model_config = ConfigDict(from_attributes=True)

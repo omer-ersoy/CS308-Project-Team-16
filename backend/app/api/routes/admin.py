@@ -267,10 +267,10 @@ def update_order_status(
     _: UserRead = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ) -> Order:
-    if payload.status not in ("processing", "in-transit", "delivered"):
+    if payload.status not in ("processing", "in-transit", "delivered", "cancelled", "refunded"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Status must be one of: processing, in-transit, delivered",
+            detail="Status must be one of: processing, in-transit, delivered, cancelled, refunded",
         )
 
     order = db.scalar(

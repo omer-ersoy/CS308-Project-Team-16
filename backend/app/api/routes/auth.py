@@ -21,6 +21,8 @@ def register(payload: UserRegister, db: Session = Depends(get_db)) -> UserRead:
     user = User(
         full_name=payload.full_name,
         email=str(payload.email).lower(),
+        tax_id=payload.tax_id,
+        address=payload.address,
         role="customer",
         hashed_password=hash_password(payload.password),
     )

@@ -130,6 +130,8 @@ describe("api client", () => {
     const payload = {
       full_name: "Fresh Customer",
       email: "fresh@example.com",
+      tax_id: "44444444440",
+      address: "Fresh Customer Test Address",
       password: "password123",
     };
 

@@ -97,6 +97,19 @@ export const api = {
     });
   },
 
+  listRefundNotifications(token) {
+    return request("/notifications/refunds", {
+      token,
+    });
+  },
+
+  markRefundNotificationsRead(token) {
+    return request("/notifications/refunds/read", {
+      method: "PATCH",
+      token,
+    });
+  },
+
   listProductReviews(productId, token) {
     return request(`/products/${productId}/reviews`, {
       token,
@@ -165,6 +178,18 @@ export const api = {
     });
   },
 
+  listProductManagerDeliveries(token) {
+    return request("/product-manager/deliveries", { token });
+  },
+
+  updateProductManagerDelivery(token, deliveryId, payload) {
+    return request(`/product-manager/deliveries/${deliveryId}`, {
+      method: "PATCH",
+      token,
+      body: payload,
+    });
+  },
+
   listProductManagerCategories(token) {
     return request("/product-manager/categories", { token });
   },
@@ -186,6 +211,10 @@ export const api = {
 
   listPendingReviews(token) {
     return request("/product-manager/reviews/pending", { token });
+  },
+
+  listProductManagerReviews(token) {
+    return request("/product-manager/reviews", { token });
   },
 
   updateReviewStatus(token, reviewId, payload) {

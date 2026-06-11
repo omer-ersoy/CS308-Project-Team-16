@@ -145,7 +145,7 @@ function ProductPage({
         if (!isMounted) return;
         const deliveredIds = new Set();
         orders
-          .filter((order) => order.status === "delivered")
+          .filter((order) => ["delivered", "refunded"].includes(order.status))
           .forEach((order) => {
             (order.items ?? []).forEach((item) => {
               if (item.product_id != null) {
@@ -483,7 +483,7 @@ function ProductPage({
                   <>
                     {!canReviewDeliveredProduct && (
                       <div className="mt-5 border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
-                        You can rate and comment on this product after your order is delivered.
+                        You can rate and comment on this product after delivery or refund approval.
                       </div>
                     )}
                     <div className="mt-5">

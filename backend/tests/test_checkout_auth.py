@@ -70,7 +70,7 @@ def test_authenticated_checkout_creates_delivery_list_entry(
     assert delivery_entry.product_id == product.id
     assert delivery_entry.quantity == 1
     assert delivery_entry.total_price == product.price
-    assert delivery_entry.delivery_address == "Address pending"
+    assert delivery_entry.delivery_address == customer.address
     assert delivery_entry.completion_status is False
 
 
@@ -95,6 +95,37 @@ def test_authenticated_checkout_snapshots_unit_cost(
 
     order_item = db_session.query(OrderItem).filter_by(order_id=checkout_payload["db_order_id"]).one()
     assert order_item.unit_cost == product.cost_price
+
+
+def test_cancelled_purchase_restores_product_stock(
+    client: TestClient,
+    db_session,
+    sample_data: dict[str, object],
+) -> None:
+    product = sample_data["product"]
+    customer = sample_data["customer"]
+    cart_id = 1
+    product.quantity_in_stock = 5
+    db_session.commit()
+
+    add_response = client.post(
+        f"/api/carts/{cart_id}/items",
+        json={"product_id": product.id, "quantity": 1},
+    )
+    assert add_response.status_code == 200
+
+    checkout_response = client.post(f"/api/carts/{cart_id}/checkout", headers=auth_headers(customer))
+    assert checkout_response.status_code == 200
+    order_id = checkout_response.json()["db_order_id"]
+    db_session.refresh(product)
+    assert product.quantity_in_stock == 4
+
+    cancel_response = client.post(f"/api/orders/{order_id}/cancel", headers=auth_headers(customer))
+
+    assert cancel_response.status_code == 200
+    assert cancel_response.json()["status"] == "cancelled"
+    db_session.refresh(product)
+    assert product.quantity_in_stock == 5
 
 
 def test_add_to_cart_rejects_out_of_stock_product(
