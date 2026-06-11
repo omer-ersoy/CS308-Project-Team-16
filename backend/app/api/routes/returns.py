@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_current_user, get_sales_manager_user
-from app.db.models import OrderItem, ReturnRequest
+from app.db.models import OrderItem, Product, ReturnRequest
 from app.db.session import get_db
 from app.schemas.return_request import ReturnRequestCreate, ReturnRequestDecision, ReturnRequestRead
 from app.schemas.user import UserRead
@@ -122,6 +122,11 @@ def approve_return_request(
     db: Session = Depends(get_db),
 ) -> ReturnRequest:
     return_request = get_return_request_for_evaluation(db, request_id)
+    if return_request.product_id is not None:
+        product = db.get(Product, return_request.product_id)
+        if product is not None:
+            product.quantity_in_stock += return_request.quantity
+
     return_request.status = "approved"
     return_request.decision_note = payload.decision_note if payload else None
     return_request.evaluated_by_id = current_user.id

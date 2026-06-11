@@ -220,6 +220,9 @@ def test_sales_manager_can_approve_return_request(
 ) -> None:
     sales_manager = create_sales_manager(db_session)
     return_request = create_pending_return_request(db_session, sample_data)
+    product = sample_data["product"]
+    product.quantity_in_stock = 3
+    db_session.commit()
 
     response = client.post(
         f"/api/returns/{return_request.id}/approve",
@@ -233,6 +236,8 @@ def test_sales_manager_can_approve_return_request(
     assert payload["decision_note"] == "Approved after review."
     assert payload["evaluated_by_id"] == sales_manager.id
     assert payload["evaluated_at"] is not None
+    db_session.refresh(product)
+    assert product.quantity_in_stock == 4
 
 
 def test_sales_manager_can_reject_return_request(
