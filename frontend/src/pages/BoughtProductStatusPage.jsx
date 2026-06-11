@@ -7,15 +7,18 @@ const ORDER_STATUS_LABELS = {
   processing: "Processing",
   "in-transit": "In Transit",
   delivered: "Delivered",
+  cancelled: "Cancelled",
 };
 
 const ORDER_STATUS_CLASSES = {
   processing: "border-amber-200 bg-amber-50 text-amber-700",
   "in-transit": "border-sky-200 bg-sky-50 text-sky-700",
   delivered: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  cancelled: "border-rose-200 bg-rose-50 text-rose-700",
 };
 
 const STATUS_STEPS = ["processing", "in-transit", "delivered"];
+const RETURN_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 function formatOrderDate(value) {
   const date = new Date(value);
@@ -36,12 +39,28 @@ function statusStepIndex(status) {
   return Math.max(STATUS_STEPS.indexOf(status), 0);
 }
 
+function getReturnEligibility(item) {
+  if (item.orderStatus !== "delivered" || item.return_request_status) {
+    return false;
+  }
+
+  const purchasedAt = new Date(item.orderCreatedAt);
+  if (Number.isNaN(purchasedAt.getTime())) {
+    return false;
+  }
+
+  return Date.now() <= purchasedAt.getTime() + RETURN_WINDOW_MS;
+}
+
 function BoughtProductStatusPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick }) {
   const { token, isLoggedIn, openAuth } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [returnError, setReturnError] = useState("");
+  const [returnReasons, setReturnReasons] = useState({});
+  const [submittingReturnItemId, setSubmittingReturnItemId] = useState(null);
 
   const loadOrders = useCallback(
     async ({ silent = false } = {}) => {
@@ -100,6 +119,37 @@ function BoughtProductStatusPage({ searchProps, cartCount = 0, wishlistCount = 0
     [orders],
   );
 
+  async function handleCreateReturnRequest(item) {
+    setReturnError("");
+    setSubmittingReturnItemId(item.id);
+    try {
+      const returnRequest = await api.createReturnRequest(token, {
+        order_item_id: item.id,
+        quantity: item.quantity,
+        reason: returnReasons[item.id] || null,
+      });
+      setOrders((currentOrders) =>
+        currentOrders.map((order) => ({
+          ...order,
+          items: (order.items ?? []).map((orderItem) =>
+            orderItem.id === item.id
+              ? {
+                  ...orderItem,
+                  return_request_id: returnRequest.id,
+                  return_request_status: returnRequest.status,
+                }
+              : orderItem,
+          ),
+        })),
+      );
+      setReturnReasons((currentReasons) => ({ ...currentReasons, [item.id]: "" }));
+    } catch (err) {
+      setReturnError(err.message);
+    } finally {
+      setSubmittingReturnItemId(null);
+    }
+  }
+
   return (
     <PageShell
       searchProps={searchProps}
@@ -125,6 +175,11 @@ function BoughtProductStatusPage({ searchProps, cartCount = 0, wishlistCount = 0
               </button>
             )}
           </div>
+          {returnError ? (
+            <div className="mt-6 border border-red-100 bg-red-50 p-4 text-sm text-red-600">
+              {returnError}
+            </div>
+          ) : null}
 
           {!isLoggedIn ? (
             <div className="mt-8 border border-slate-200 bg-white p-8 text-center">
@@ -153,6 +208,7 @@ function BoughtProductStatusPage({ searchProps, cartCount = 0, wishlistCount = 0
             <div className="mt-8 grid gap-5">
               {purchasedItems.map((item) => {
                 const currentStep = statusStepIndex(item.orderStatus);
+                const canRequestReturn = getReturnEligibility(item);
 
                 return (
                   <article key={`${item.orderId}-${item.id}`} className="border border-slate-200 bg-white p-6">
@@ -193,6 +249,38 @@ function BoughtProductStatusPage({ searchProps, cartCount = 0, wishlistCount = 0
                         );
                       })}
                     </div>
+                    {item.return_request_status ? (
+                      <div className="mt-5 inline-flex border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] tracking-[0.18em] text-slate-600 uppercase">
+                        Return {item.return_request_status}
+                      </div>
+                    ) : canRequestReturn ? (
+                      <div className="mt-5 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-[1fr_auto] sm:items-end">
+                        <label className="grid gap-2 text-xs tracking-[0.18em] text-slate-500 uppercase">
+                          Reason
+                          <textarea
+                            value={returnReasons[item.id] ?? ""}
+                            onChange={(event) =>
+                              setReturnReasons((currentReasons) => ({
+                                ...currentReasons,
+                                [item.id]: event.target.value,
+                              }))
+                            }
+                            rows={2}
+                            maxLength={500}
+                            className="min-h-20 resize-y border border-slate-200 px-3 py-2 text-sm normal-case tracking-normal text-slate-700 outline-none focus:border-slate-500"
+                            placeholder="Optional"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => handleCreateReturnRequest(item)}
+                          disabled={submittingReturnItemId === item.id}
+                          className="border border-slate-900 bg-slate-900 px-5 py-3 text-xs tracking-[0.18em] text-white uppercase transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {submittingReturnItemId === item.id ? "Submitting" : "Request return"}
+                        </button>
+                      </div>
+                    ) : null}
                   </article>
                 );
               })}

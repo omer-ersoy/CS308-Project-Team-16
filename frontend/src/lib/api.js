@@ -338,6 +338,14 @@ export const api = {
     });
   },
 
+  createReturnRequest(token, payload) {
+    return request("/returns", {
+      method: "POST",
+      token,
+      body: payload,
+    });
+  },
+
   getRevenueSummary(token, params = {}) {
     const searchParams = new URLSearchParams();
     if (params.startDate) {

@@ -1,9 +1,12 @@
 from decimal import Decimal
+from datetime import UTC, datetime, timedelta
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
 from app.db.models import Order, OrderItem, ReturnRequest
+from tests.conftest import auth_headers
 
 
 def test_return_request_model_links_to_purchased_order_item(
@@ -71,3 +74,77 @@ def test_return_request_model_rejects_duplicate_order_item_request(
 
     with pytest.raises(IntegrityError):
         db_session.commit()
+
+
+def test_customer_can_create_return_request_for_eligible_product(
+    client: TestClient,
+    db_session,
+    sample_data: dict[str, object],
+) -> None:
+    customer = sample_data["customer"]
+    order = db_session.query(Order).filter_by(user_id=customer.id, status="delivered").one()
+    order_item = db_session.query(OrderItem).filter_by(order_id=order.id).one()
+    order_item.unit_price = Decimal("99.50")
+    db_session.commit()
+
+    response = client.post(
+        "/api/returns",
+        headers=auth_headers(customer),
+        json={
+            "order_item_id": order_item.id,
+            "quantity": 1,
+            "reason": "Wrong size.",
+        },
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["status"] == "pending"
+    assert payload["refund_amount"] == "99.50"
+    assert payload["order_item_id"] == order_item.id
+
+
+def test_return_request_rejects_expired_return_window(
+    client: TestClient,
+    db_session,
+    sample_data: dict[str, object],
+) -> None:
+    customer = sample_data["customer"]
+    order = db_session.query(Order).filter_by(user_id=customer.id, status="delivered").one()
+    order.created_at = datetime.now(UTC) - timedelta(days=31)
+    order_item = db_session.query(OrderItem).filter_by(order_id=order.id).one()
+    db_session.commit()
+
+    response = client.post(
+        "/api/returns",
+        headers=auth_headers(customer),
+        json={"order_item_id": order_item.id, "quantity": 1},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Return window has expired."
+
+
+def test_return_request_rejects_duplicate_request(
+    client: TestClient,
+    db_session,
+    sample_data: dict[str, object],
+) -> None:
+    customer = sample_data["customer"]
+    order = db_session.query(Order).filter_by(user_id=customer.id, status="delivered").one()
+    order_item = db_session.query(OrderItem).filter_by(order_id=order.id).one()
+
+    first_response = client.post(
+        "/api/returns",
+        headers=auth_headers(customer),
+        json={"order_item_id": order_item.id, "quantity": 1},
+    )
+    second_response = client.post(
+        "/api/returns",
+        headers=auth_headers(customer),
+        json={"order_item_id": order_item.id, "quantity": 1},
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 409
+    assert second_response.json()["detail"] == "A return request already exists for this product."

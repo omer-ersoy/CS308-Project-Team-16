@@ -221,6 +221,18 @@ class OrderItem(Base):
         cascade="all, delete-orphan",
     )
 
+    @property
+    def return_request_id(self) -> int | None:
+        if not self.return_requests:
+            return None
+        return self.return_requests[0].id
+
+    @property
+    def return_request_status(self) -> str | None:
+        if not self.return_requests:
+            return None
+        return self.return_requests[0].status
+
 
 class ReturnRequest(Base):
     __tablename__ = "return_requests"

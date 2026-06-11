@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_current_user, get_sales_manager_user
-from app.db.models import Order, Product
+from app.db.models import Order, OrderItem, Product
 from app.db.session import get_db
 from app.schemas.order import OrderRead
 from app.schemas.user import UserRead
@@ -30,7 +30,7 @@ def list_my_orders(
 ) -> list[Order]:
     return db.scalars(
         select(Order)
-        .options(selectinload(Order.items))
+        .options(selectinload(Order.items).selectinload(OrderItem.return_requests))
         .where(Order.user_id == current_user.id)
         .order_by(Order.id.desc())
     ).all()
@@ -44,7 +44,7 @@ def cancel_my_order(
 ) -> Order:
     order = db.scalar(
         select(Order)
-        .options(selectinload(Order.items))
+        .options(selectinload(Order.items).selectinload(OrderItem.return_requests))
         .where(Order.id == order_id, Order.user_id == current_user.id)
     )
     if order is None:
@@ -67,7 +67,7 @@ def cancel_my_order(
 
     return db.scalar(
         select(Order)
-        .options(selectinload(Order.items))
+        .options(selectinload(Order.items).selectinload(OrderItem.return_requests))
         .where(Order.id == order_id)
     )
 
@@ -85,7 +85,7 @@ def list_sales_manager_invoices(
             detail="start_date must be before or equal to end_date",
         )
 
-    query = select(Order).options(selectinload(Order.items))
+    query = select(Order).options(selectinload(Order.items).selectinload(OrderItem.return_requests))
     if start_date is not None:
         query = query.where(Order.created_at >= start_of_day(start_date))
     if end_date is not None:
