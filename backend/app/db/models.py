@@ -33,6 +33,15 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    return_requests: Mapped[list["ReturnRequest"]] = relationship(
+        back_populates="customer",
+        cascade="all, delete-orphan",
+        foreign_keys="ReturnRequest.customer_id",
+    )
+    evaluated_return_requests: Mapped[list["ReturnRequest"]] = relationship(
+        back_populates="evaluated_by",
+        foreign_keys="ReturnRequest.evaluated_by_id",
+    )
 
 
 class Category(Base):
@@ -74,6 +83,7 @@ class Product(Base):
         back_populates="product",
         cascade="all, delete-orphan",
     )
+    return_requests: Mapped[list["ReturnRequest"]] = relationship(back_populates="product")
 
     @property
     def rating_count(self) -> int:
@@ -188,6 +198,10 @@ class Order(Base):
         back_populates="order",
         cascade="all, delete-orphan",
     )
+    return_requests: Mapped[list["ReturnRequest"]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+    )
 
 
 class OrderItem(Base):
@@ -202,6 +216,46 @@ class OrderItem(Base):
     unit_cost: Mapped[Decimal] = mapped_column(DECIMAL(10, 2), default=Decimal("0.00"), server_default="0")
 
     order: Mapped["Order"] = relationship(back_populates="items")
+    return_requests: Mapped[list["ReturnRequest"]] = relationship(
+        back_populates="order_item",
+        cascade="all, delete-orphan",
+    )
+
+
+class ReturnRequest(Base):
+    __tablename__ = "return_requests"
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_return_requests_quantity_positive"),
+        CheckConstraint("status IN ('pending', 'approved', 'rejected')", name="ck_return_requests_status"),
+        UniqueConstraint("order_item_id", name="uq_return_requests_order_item"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
+    order_item_id: Mapped[int] = mapped_column(ForeignKey("order_items.id", ondelete="CASCADE"), index=True)
+    customer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True)
+    quantity: Mapped[int] = mapped_column(Integer)
+    reason: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="pending", server_default="pending")
+    refund_amount: Mapped[Decimal] = mapped_column(DECIMAL(10, 2))
+    decision_note: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    evaluated_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    evaluated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    order: Mapped["Order"] = relationship(back_populates="return_requests")
+    order_item: Mapped["OrderItem"] = relationship(back_populates="return_requests")
+    customer: Mapped["User | None"] = relationship(
+        back_populates="return_requests",
+        foreign_keys=[customer_id],
+    )
+    product: Mapped["Product | None"] = relationship(back_populates="return_requests")
+    evaluated_by: Mapped["User | None"] = relationship(
+        back_populates="evaluated_return_requests",
+        foreign_keys=[evaluated_by_id],
+    )
 
 
 class DeliveryListEntry(Base):
