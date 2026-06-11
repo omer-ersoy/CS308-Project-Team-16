@@ -8,12 +8,14 @@ const ORDER_STATUS_LABELS = {
   processing: "Processing",
   "in-transit": "In Transit",
   delivered: "Delivered",
+  cancelled: "Cancelled",
 };
 
 const ORDER_STATUS_CLASSES = {
   processing: "border-amber-200 bg-amber-50 text-amber-700",
   "in-transit": "border-sky-200 bg-sky-50 text-sky-700",
   delivered: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  cancelled: "border-rose-200 bg-rose-50 text-rose-700",
 };
 
 function formatOrderDate(value) {
@@ -36,6 +38,8 @@ function OrdersPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cancelError, setCancelError] = useState("");
+  const [cancelingOrderId, setCancelingOrderId] = useState(null);
 
   useEffect(() => {
     if (!isLoggedIn || !token) {
@@ -68,6 +72,26 @@ function OrdersPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick
     };
   }, [isLoggedIn, token]);
 
+  async function handleCancelOrder(orderId) {
+    const confirmed = window.confirm("Cancel this order?");
+    if (!confirmed) {
+      return;
+    }
+
+    setCancelError("");
+    setCancelingOrderId(orderId);
+    try {
+      const updatedOrder = await api.cancelMyOrder(token, orderId);
+      setOrders((currentOrders) =>
+        currentOrders.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)),
+      );
+    } catch (err) {
+      setCancelError(err.message);
+    } finally {
+      setCancelingOrderId(null);
+    }
+  }
+
   return (
     <PageShell
       searchProps={searchProps}
@@ -79,6 +103,11 @@ function OrdersPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick
         <div className="mx-auto max-w-4xl">
           <p className="text-[11px] tracking-[0.3em] text-slate-500 uppercase">Order history</p>
           <h1 className="mt-3 text-4xl font-light tracking-tight text-slate-800">My Orders</h1>
+          {cancelError ? (
+            <div className="mt-6 border border-red-100 bg-red-50 p-4 text-sm text-red-600">
+              {cancelError}
+            </div>
+          ) : null}
 
           {!isLoggedIn ? (
             <div className="mt-8 border border-slate-200 bg-white p-8 text-center">
@@ -141,7 +170,19 @@ function OrdersPage({ searchProps, cartCount = 0, wishlistCount = 0, onCartClick
                         {Number(order.total_amount).toFixed(2)} USD
                       </span>
                     </span>
-                    <InvoiceActions order={order} customer={currentUser} compact />
+                    <div className="flex flex-wrap items-center gap-3">
+                      {order.status === "processing" ? (
+                        <button
+                          type="button"
+                          onClick={() => handleCancelOrder(order.id)}
+                          disabled={cancelingOrderId === order.id}
+                          className="border border-rose-200 px-4 py-2 text-[11px] tracking-[0.18em] text-rose-700 uppercase transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {cancelingOrderId === order.id ? "Cancelling" : "Cancel order"}
+                        </button>
+                      ) : null}
+                      <InvoiceActions order={order} customer={currentUser} compact />
+                    </div>
                   </div>
                 </article>
               ))}

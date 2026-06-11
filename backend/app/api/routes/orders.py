@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_current_user, get_sales_manager_user
-from app.db.models import Order
+from app.db.models import Order, Product
 from app.db.session import get_db
 from app.schemas.order import OrderRead
 from app.schemas.user import UserRead
@@ -34,6 +34,42 @@ def list_my_orders(
         .where(Order.user_id == current_user.id)
         .order_by(Order.id.desc())
     ).all()
+
+
+@router.post("/{order_id}/cancel", response_model=OrderRead)
+def cancel_my_order(
+    order_id: int,
+    current_user: UserRead = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Order:
+    order = db.scalar(
+        select(Order)
+        .options(selectinload(Order.items))
+        .where(Order.id == order_id, Order.user_id == current_user.id)
+    )
+    if order is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    if order.status != "processing":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only processing orders can be cancelled.",
+        )
+
+    for item in order.items:
+        if item.product_id is None:
+            continue
+        product = db.get(Product, item.product_id)
+        if product is not None:
+            product.quantity_in_stock += item.quantity
+
+    order.status = "cancelled"
+    db.commit()
+
+    return db.scalar(
+        select(Order)
+        .options(selectinload(Order.items))
+        .where(Order.id == order_id)
+    )
 
 
 @router.get("/invoices", response_model=list[OrderRead])

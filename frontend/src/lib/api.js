@@ -331,6 +331,13 @@ export const api = {
     return request("/orders/mine", { token });
   },
 
+  cancelMyOrder(token, orderId) {
+    return request(`/orders/${orderId}/cancel`, {
+      method: "POST",
+      token,
+    });
+  },
+
   getRevenueSummary(token, params = {}) {
     const searchParams = new URLSearchParams();
     if (params.startDate) {

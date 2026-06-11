@@ -174,7 +174,7 @@ class CartItem(Base):
 class Order(Base):
     __tablename__ = "orders"
     __table_args__ = (
-        CheckConstraint("status IN ('processing', 'in-transit', 'delivered')", name="ck_orders_status"),
+        CheckConstraint("status IN ('processing', 'in-transit', 'delivered', 'cancelled')", name="ck_orders_status"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
