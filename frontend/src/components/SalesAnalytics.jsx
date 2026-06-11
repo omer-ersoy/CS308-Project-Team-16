@@ -1,8 +1,16 @@
 import { useState } from "react";
 import { api } from "../lib/api";
+import SalesAnalyticsCharts from "./SalesAnalyticsCharts";
 
 function money(value) {
   return `${Number(value ?? 0).toFixed(2)} USD`;
+}
+
+function formatPeriod(value) {
+  return new Date(value).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function SalesAnalytics({ token = "" }) {
@@ -13,11 +21,13 @@ function SalesAnalytics({ token = "" }) {
   const [message, setMessage] = useState("");
   const [revenueSummary, setRevenueSummary] = useState(null);
   const [profitLossSummary, setProfitLossSummary] = useState(null);
+  const [timeSeries, setTimeSeries] = useState([]);
 
   async function loadAnalytics(filters) {
     if (!token) {
       setRevenueSummary(null);
       setProfitLossSummary(null);
+      setTimeSeries([]);
       return;
     }
 
@@ -25,16 +35,27 @@ function SalesAnalytics({ token = "" }) {
     setMessage("");
 
     try {
-      const [revenue, profitLoss] = await Promise.all([
+      const [revenue, profitLoss, series] = await Promise.all([
         api.getRevenueSummary(token, filters),
         api.getProfitLossSummary(token, filters),
+        api.getRevenueTimeSeries(token, { ...filters, granularity: "day" }),
       ]);
       setRevenueSummary(revenue);
       setProfitLossSummary(profitLoss);
+      setTimeSeries(
+        (series.points ?? []).map((point) => ({
+          ...point,
+          label: formatPeriod(point.period),
+          revenue: Number(point.revenue),
+          profit: Number(point.profit),
+          loss: Number(point.loss),
+        })),
+      );
     } catch (error) {
       setMessage(error.message);
       setRevenueSummary(null);
       setProfitLossSummary(null);
+      setTimeSeries([]);
     } finally {
       setLoading(false);
     }
@@ -153,9 +174,13 @@ function SalesAnalytics({ token = "" }) {
         </div>
       </div>
 
-      <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">
-        Revenue chart placeholder
-      </div>
+      {timeSeries.length === 0 ? (
+        <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">
+          {loading ? "Loading chart..." : "Run Calculate to load chart data."}
+        </div>
+      ) : (
+        <SalesAnalyticsCharts timeSeries={timeSeries} money={money} />
+      )}
     </section>
   );
 }

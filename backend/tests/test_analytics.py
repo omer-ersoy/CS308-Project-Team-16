@@ -228,3 +228,53 @@ def test_customer_cannot_access_profit_loss_summary(
     )
 
     assert response.status_code == 403
+
+
+def test_timeseries_returns_daily_points(
+    client: TestClient,
+    db_session: Session,
+    sample_data: dict[str, object],
+) -> None:
+    customer = sample_data["customer"]
+    sales_manager = create_sales_manager(db_session)
+
+    create_order_with_items(
+        db_session,
+        user_id=customer.id,
+        created_at=datetime(2026, 6, 1, 10, 0, tzinfo=UTC),
+        unit_price=Decimal("100.00"),
+        unit_cost=Decimal("60.00"),
+    )
+    create_order_with_items(
+        db_session,
+        user_id=customer.id,
+        created_at=datetime(2026, 6, 2, 10, 0, tzinfo=UTC),
+        unit_price=Decimal("80.00"),
+        unit_cost=Decimal("50.00"),
+    )
+
+    response = client.get(
+        "/api/orders/analytics/timeseries?start_date=2026-06-01&end_date=2026-06-02",
+        headers=auth_headers(sales_manager),
+    )
+
+    assert response.status_code == 200
+    points = response.json()["points"]
+    assert len(points) == 2
+    assert points[0]["period"] == "2026-06-01"
+    assert Decimal(points[0]["revenue"]) == Decimal("100.00")
+    assert Decimal(points[1]["profit"]) == Decimal("30.00")
+
+
+def test_timeseries_rejects_unsupported_granularity(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    sales_manager = create_sales_manager(db_session)
+
+    response = client.get(
+        "/api/orders/analytics/timeseries?granularity=month",
+        headers=auth_headers(sales_manager),
+    )
+
+    assert response.status_code == 400

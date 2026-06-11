@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 
@@ -9,7 +10,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.api.deps import get_sales_manager_user
 from app.db.models import Order, OrderItem
 from app.db.session import get_db
-from app.schemas.analytics import ProfitLossSummaryRead, RevenueSummaryRead
+from app.schemas.analytics import (
+    AnalyticsTimeSeriesPoint,
+    AnalyticsTimeSeriesRead,
+    ProfitLossSummaryRead,
+    RevenueSummaryRead,
+)
 from app.schemas.user import UserRead
 
 
@@ -130,3 +136,47 @@ def get_profit_loss_summary(
         total_loss=total_loss,
         net_profit=total_revenue - total_cost,
     )
+
+
+@router.get("/timeseries", response_model=AnalyticsTimeSeriesRead)
+def get_analytics_timeseries(
+    start_date: date | None = None,
+    end_date: date | None = None,
+    granularity: str = "day",
+    _: UserRead = Depends(get_sales_manager_user),
+    db: Session = Depends(get_db),
+) -> AnalyticsTimeSeriesRead:
+    if granularity != "day":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only day granularity is supported",
+        )
+
+    validate_date_range(start_date, end_date)
+    orders = get_orders_with_items(db, start_date, end_date)
+    buckets: dict[date, dict[str, Decimal]] = defaultdict(
+        lambda: {
+            "revenue": Decimal("0.00"),
+            "profit": Decimal("0.00"),
+            "loss": Decimal("0.00"),
+        }
+    )
+
+    for order in orders:
+        period = order.created_at.astimezone(UTC).date()
+        revenue, _, profit, loss = summarize_line_items(order.items)
+        buckets[period]["revenue"] += revenue
+        buckets[period]["profit"] += profit
+        buckets[period]["loss"] += loss
+
+    points = [
+        AnalyticsTimeSeriesPoint(
+            period=period,
+            revenue=values["revenue"],
+            profit=values["profit"],
+            loss=values["loss"],
+        )
+        for period, values in sorted(buckets.items())
+    ]
+
+    return AnalyticsTimeSeriesRead(points=points)

@@ -20,3 +20,14 @@ class ProfitLossSummaryRead(BaseModel):
     total_profit: Decimal
     total_loss: Decimal
     net_profit: Decimal
+
+
+class AnalyticsTimeSeriesPoint(BaseModel):
+    period: date
+    revenue: Decimal
+    profit: Decimal
+    loss: Decimal
+
+
+class AnalyticsTimeSeriesRead(BaseModel):
+    points: list[AnalyticsTimeSeriesPoint]

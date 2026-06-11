@@ -345,6 +345,23 @@ export const api = {
     });
   },
 
+  getRevenueTimeSeries(token, params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.startDate) {
+      searchParams.set("start_date", params.startDate);
+    }
+    if (params.endDate) {
+      searchParams.set("end_date", params.endDate);
+    }
+    if (params.granularity) {
+      searchParams.set("granularity", params.granularity);
+    }
+    const queryString = searchParams.toString();
+    return request(`/orders/analytics/timeseries${queryString ? `?${queryString}` : ""}`, {
+      token,
+    });
+  },
+
   getProfitLossSummary(token, params = {}) {
     const searchParams = new URLSearchParams();
     if (params.startDate) {

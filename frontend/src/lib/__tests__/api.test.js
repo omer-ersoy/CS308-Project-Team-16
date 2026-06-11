@@ -229,6 +229,30 @@ describe("api client", () => {
     );
   });
 
+  it("requests analytics timeseries with granularity", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockJsonResponse({
+        points: [{ period: "2026-06-01", revenue: "100.00", profit: "40.00", loss: "0.00" }],
+      }),
+    );
+
+    await api.getRevenueTimeSeries("sales-token", {
+      startDate: "2026-06-01",
+      endDate: "2026-06-02",
+      granularity: "day",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${API_BASE_URL}/orders/analytics/timeseries?start_date=2026-06-01&end_date=2026-06-02&granularity=day`,
+      {
+        headers: {
+          Authorization: "Bearer sales-token",
+        },
+        body: undefined,
+      },
+    );
+  });
+
   it("requests profit-loss analytics with bearer auth", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       mockJsonResponse({
