@@ -137,6 +137,29 @@ def test_customer_can_create_return_request_for_eligible_product(
     assert payload["order_item_id"] == order_item.id
 
 
+def test_return_request_refund_uses_original_purchase_price(
+    client: TestClient,
+    db_session,
+    sample_data: dict[str, object],
+) -> None:
+    customer = sample_data["customer"]
+    product = sample_data["product"]
+    order = db_session.query(Order).filter_by(user_id=customer.id, status="delivered").one()
+    order_item = db_session.query(OrderItem).filter_by(order_id=order.id).one()
+    order_item.unit_price = Decimal("79.99")
+    product.price = Decimal("129.99")
+    db_session.commit()
+
+    response = client.post(
+        "/api/returns",
+        headers=auth_headers(customer),
+        json={"order_item_id": order_item.id, "quantity": 1},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["refund_amount"] == "79.99"
+
+
 def test_return_request_rejects_expired_return_window(
     client: TestClient,
     db_session,
